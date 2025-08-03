@@ -174,6 +174,13 @@ export default function StudentDashboard() {
                       className="w-full"
                     >
                       Mark Attendance
+                     <Button 
+                       onClick={() => router.push(`/student/register-face/${classItem.id}`)}
+                       variant="outline"
+                       className="flex-1"
+                     >
+                       Register Face
+                     </Button>
                     </Button>
                   </CardContent>
                 </Card>

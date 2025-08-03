@@ -7,18 +7,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { 
   ArrowLeft, 
   Camera, 
-  MapPin, 
-  Clock, 
   CheckCircle, 
   AlertCircle,
   RefreshCw,
-  User
+  User,
+  Upload
 } from 'lucide-react';
 import { Class } from '@/types';
-import { getCurrentLocation, LocationCoordinates } from '@/lib/geolocation';
 
 interface User {
   id: string;
@@ -30,19 +29,17 @@ interface User {
   photo: string;
 }
 
-export default function AttendancePage() {
+export default function RegisterFacePage() {
   const [user, setUser] = useState<User | null>(null);
   const [classData, setClassData] = useState<Class | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [step, setStep] = useState<'location' | 'camera' | 'processing' | 'success'>('location');
-  const [location, setLocation] = useState<LocationCoordinates | null>(null);
-  const [locationStatus, setLocationStatus] = useState<'checking' | 'valid' | 'invalid'>('checking');
-  const [faceImage, setFaceImage] = useState<string | null>(null);
+  const [step, setStep] = useState<'camera' | 'processing' | 'success'>('camera');
+  const [faceImages, setFaceImages] = useState<string[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [faceAccuracy, setFaceAccuracy] = useState<number | null>(null);
-  const [recognitionDetails, setRecognitionDetails] = useState<any>(null);
+  const [registrationProgress, setRegistrationProgress] = useState(0);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -51,6 +48,8 @@ export default function AttendancePage() {
   const router = useRouter();
   const params = useParams();
   const classId = params.classId as string;
+
+  const requiredImages = 5; // Butuh 5 foto untuk registrasi yang akurat
 
   useEffect(() => {
     // Check if user is logged in
@@ -71,8 +70,8 @@ export default function AttendancePage() {
   }, [router, classId]);
 
   useEffect(() => {
-    if (step === 'location') {
-      checkLocation();
+    if (step === 'camera') {
+      startCamera();
     }
   }, [step]);
 
@@ -97,27 +96,6 @@ export default function AttendancePage() {
     }
   };
 
-  const checkLocation = async () => {
-    try {
-      setLocationStatus('checking');
-      setMessage('Checking your location...');
-      
-      const currentLocation = await getCurrentLocation();
-      setLocation(currentLocation);
-      
-      // For demo purposes, always show valid location
-      // In real implementation, validate against class location
-      setTimeout(() => {
-        setLocationStatus('valid');
-        setMessage('Location verified! You are within the allowed area.');
-      }, 2000);
-      
-    } catch (error) {
-      setLocationStatus('invalid');
-      setError(error instanceof Error ? error.message : 'Failed to get location');
-    }
-  };
-
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -133,7 +111,6 @@ export default function AttendancePage() {
         streamRef.current = stream;
       }
       
-      setStep('camera');
       setError('');
     } catch (error) {
       setError('Failed to access camera. Please allow camera permissions.');
@@ -153,27 +130,42 @@ export default function AttendancePage() {
       context.drawImage(video, 0, 0);
       
       const imageData = canvas.toDataURL('image/jpeg', 0.8);
-      setFaceImage(imageData);
+      const newImages = [...faceImages, imageData];
+      setFaceImages(newImages);
+      setCurrentImageIndex(currentImageIndex + 1);
       
-      // Stop the camera
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
+      if (newImages.length >= requiredImages) {
+        // Stop the camera
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+        
+        processFaceRegistration(newImages);
+      } else {
+        setMessage(`Foto ${newImages.length}/${requiredImages} berhasil diambil. Ambil foto dari sudut yang berbeda.`);
       }
-      
-      processAttendance(imageData);
     }
   };
 
-  const processAttendance = async (imageData: string) => {
-    if (!user || !classData || !location) return;
+  const processFaceRegistration = async (images: string[]) => {
+    if (!user || !classData) return;
 
     setStep('processing');
     setIsProcessing(true);
-    setMessage('Processing attendance...');
+    setMessage('Memproses registrasi wajah...');
 
     try {
-      const response = await fetch('/api/attendance', {
+      // Simulate processing each image
+      for (let i = 0; i < images.length; i++) {
+        setRegistrationProgress(((i + 1) / images.length) * 100);
+        setMessage(`Memproses foto ${i + 1}/${images.length}...`);
+        
+        // Simulate processing time
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      const response = await fetch('/api/face-registration', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -181,8 +173,7 @@ export default function AttendancePage() {
         body: JSON.stringify({
           student_id: user.id,
           class_id: classId,
-          location,
-          face_data: imageData
+          face_images: images
         }),
       });
 
@@ -190,25 +181,30 @@ export default function AttendancePage() {
 
       if (data.success) {
         setStep('success');
-        setMessage('Attendance marked successfully!');
-        setFaceAccuracy(data.faceRecognition?.confidence * 100 || 0);
-        setRecognitionDetails(data.faceRecognition);
+        setMessage('Registrasi wajah berhasil!');
       } else {
-        setError(data.message || 'Failed to mark attendance');
-        setStep('location'); // Reset to start
+        setError(data.message || 'Failed to register face');
+        setStep('camera');
+        setFaceImages([]);
+        setCurrentImageIndex(0);
       }
     } catch (error) {
       setError('Network error. Please try again.');
-      setStep('location'); // Reset to start
+      setStep('camera');
+      setFaceImages([]);
+      setCurrentImageIndex(0);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const retryLocation = () => {
+  const retryRegistration = () => {
     setError('');
-    setLocationStatus('checking');
-    checkLocation();
+    setFaceImages([]);
+    setCurrentImageIndex(0);
+    setRegistrationProgress(0);
+    setStep('camera');
+    startCamera();
   };
 
   const handleBack = () => {
@@ -260,7 +256,7 @@ export default function AttendancePage() {
               Back
             </Button>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">Mark Attendance</h1>
+              <h1 className="text-xl font-semibold text-gray-900">Registrasi Wajah</h1>
               <p className="text-sm text-gray-600">{classData.class_name}</p>
             </div>
           </div>
@@ -285,86 +281,26 @@ export default function AttendancePage() {
           </CardHeader>
         </Card>
 
-        {/* Step Indicators */}
-        <div className="mb-8">
-          <div className="flex items-center justify-center space-x-8">
-            <div className={`flex items-center gap-2 ${step === 'location' || locationStatus === 'checking' ? 'text-blue-600' : locationStatus === 'valid' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${locationStatus === 'valid' ? 'bg-green-100' : locationStatus === 'checking' ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                {locationStatus === 'checking' ? (
-                  <LoadingSpinner size="sm" />
-                ) : locationStatus === 'valid' ? (
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                ) : (
-                  <MapPin className="w-5 h-5" />
-                )}
-              </div>
-              <span className="text-sm font-medium">Location</span>
-            </div>
-
-            <div className={`w-16 h-px ${locationStatus === 'valid' ? 'bg-green-200' : 'bg-gray-200'}`} />
-
-            <div className={`flex items-center gap-2 ${step === 'camera' ? 'text-blue-600' : step === 'processing' || step === 'success' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'success' ? 'bg-green-100' : step === 'camera' || step === 'processing' ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                {step === 'processing' ? (
-                  <LoadingSpinner size="sm" />
-                ) : step === 'success' ? (
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                ) : (
-                  <Camera className="w-5 h-5" />
-                )}
-              </div>
-              <span className="text-sm font-medium">Face Recognition</span>
-            </div>
-          </div>
-        </div>
-
         {/* Main Content */}
         <Card>
           <CardContent className="p-8">
-            {/* Location Step */}
-            {step === 'location' && (
-              <div className="text-center space-y-6">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                  {locationStatus === 'checking' ? (
-                    <LoadingSpinner />
-                  ) : locationStatus === 'valid' ? (
-                    <CheckCircle className="w-8 h-8 text-green-600" />
-                  ) : (
-                    <MapPin className="w-8 h-8 text-blue-600" />
-                  )}
-                </div>
-                
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">
-                    {locationStatus === 'checking' ? 'Verifying Location' : 
-                     locationStatus === 'valid' ? 'Location Verified' : 'Location Check Failed'}
-                  </h3>
-                  <p className="text-gray-600">
-                    {message || error}
-                  </p>
-                </div>
-
-                {locationStatus === 'valid' && (
-                  <Button onClick={startCamera} size="lg">
-                    Continue to Face Recognition
-                  </Button>
-                )}
-
-                {locationStatus === 'invalid' && (
-                  <Button onClick={retryLocation} variant="outline" className="flex items-center gap-2">
-                    <RefreshCw className="w-4 h-4" />
-                    Retry Location Check
-                  </Button>
-                )}
-              </div>
-            )}
-
             {/* Camera Step */}
             {step === 'camera' && (
               <div className="space-y-6">
                 <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">Face Recognition</h3>
-                  <p className="text-gray-600">Position your face in the camera and take a photo</p>
+                  <h3 className="text-xl font-semibold mb-2">Registrasi Wajah untuk Kelas</h3>
+                  <p className="text-gray-600">
+                    Ambil {requiredImages} foto wajah dari sudut yang berbeda untuk registrasi yang akurat
+                  </p>
+                </div>
+
+                {/* Progress */}
+                <div className="max-w-md mx-auto">
+                  <div className="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>Progress</span>
+                    <span>{faceImages.length}/{requiredImages} foto</span>
+                  </div>
+                  <Progress value={(faceImages.length / requiredImages) * 100} className="h-2" />
                 </div>
 
                 <div className="relative max-w-md mx-auto">
@@ -379,12 +315,34 @@ export default function AttendancePage() {
                   </div>
                 </div>
 
+                {/* Instructions */}
+                <div className="text-center text-sm text-gray-600 max-w-md mx-auto">
+                  <p className="mb-2">
+                    <strong>Petunjuk:</strong>
+                  </p>
+                  <ul className="text-left space-y-1">
+                    <li>• Pastikan wajah terlihat jelas</li>
+                    <li>• Ambil foto dari sudut yang berbeda</li>
+                    <li>• Hindari cahaya yang terlalu terang/gelap</li>
+                    <li>• Jangan gunakan kacamata atau masker</li>
+                  </ul>
+                </div>
+
                 <div className="text-center">
                   <Button onClick={capturePhoto} size="lg" className="flex items-center gap-2">
                     <Camera className="w-5 h-5" />
-                    Capture Photo
+                    Ambil Foto ({faceImages.length + 1}/{requiredImages})
                   </Button>
                 </div>
+
+                {message && (
+                  <Alert className="max-w-md mx-auto">
+                    <Upload className="h-4 w-4" />
+                    <AlertDescription>
+                      {message}
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <canvas ref={canvasRef} className="hidden" />
               </div>
@@ -398,15 +356,13 @@ export default function AttendancePage() {
                 </div>
                 
                 <div>
-                  <h3 className="text-xl font-semibold mb-2">Memproses Absensi</h3>
-                  <p className="text-gray-600">
-                    Memverifikasi identitas dan menandai kehadiran...
+                  <h3 className="text-xl font-semibold mb-2">Memproses Registrasi Wajah</h3>
+                  <p className="text-gray-600 mb-4">
+                    {message}
                   </p>
-                  <div className="mt-4 max-w-sm mx-auto">
-                    <div className="flex items-center gap-2 text-sm text-blue-600">
-                      <Target className="w-4 h-4" />
-                      Menganalisis data wajah...
-                    </div>
+                  <div className="max-w-md mx-auto">
+                    <Progress value={registrationProgress} className="h-3" />
+                    <p className="text-sm text-gray-500 mt-2">{Math.round(registrationProgress)}% selesai</p>
                   </div>
                 </div>
               </div>
@@ -420,19 +376,24 @@ export default function AttendancePage() {
                 </div>
                 
                 <div>
-                  <h3 className="text-xl font-semibold mb-2 text-green-800">Attendance Marked!</h3>
+                  <h3 className="text-xl font-semibold mb-2 text-green-800">Registrasi Berhasil!</h3>
                   <p className="text-gray-600">
-                    Your attendance has been successfully recorded for {classData.class_name}.
+                    Wajah Anda telah berhasil didaftarkan untuk kelas {classData.class_name}.
+                    Sekarang Anda dapat melakukan absensi menggunakan face recognition.
                   </p>
                 </div>
 
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                  <Clock className="w-4 h-4" />
-                  {new Date().toLocaleString()}
+                <div className="bg-green-50 p-4 rounded-lg max-w-md mx-auto">
+                  <h4 className="font-medium text-green-800 mb-2">Yang telah didaftarkan:</h4>
+                  <ul className="text-sm text-green-700 space-y-1">
+                    <li>✓ {requiredImages} foto wajah dari berbagai sudut</li>
+                    <li>✓ Data biometrik wajah</li>
+                    <li>✓ Profil face recognition untuk kelas ini</li>
+                  </ul>
                 </div>
 
                 <Button onClick={handleDone} size="lg">
-                  Done
+                  Selesai
                 </Button>
               </div>
             )}
@@ -443,6 +404,17 @@ export default function AttendancePage() {
                 <AlertCircle className="h-4 w-4 text-red-600" />
                 <AlertDescription className="text-red-800">
                   {error}
+                  {step === 'camera' && (
+                    <Button 
+                      onClick={retryRegistration} 
+                      variant="outline" 
+                      size="sm" 
+                      className="ml-4 flex items-center gap-2"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Coba Lagi
+                    </Button>
+                  )}
                 </AlertDescription>
               </Alert>
             )}
