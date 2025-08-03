@@ -420,11 +420,65 @@ export default function AttendancePage() {
                 </div>
                 
                 <div>
-                  <h3 className="text-xl font-semibold mb-2 text-green-800">Attendance Marked!</h3>
+                  <h3 className="text-xl font-semibold mb-2 text-green-800">Absensi Berhasil!</h3>
                   <p className="text-gray-600">
-                    Your attendance has been successfully recorded for {classData.class_name}.
+                    Kehadiran Anda telah berhasil dicatat untuk {classData.class_name}.
                   </p>
                 </div>
+
+                {/* Face Recognition Accuracy */}
+                {faceAccuracy !== null && (
+                  <div className="max-w-md mx-auto">
+                    <Card className="border-green-200 bg-green-50">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-green-800">Akurasi Face Recognition</span>
+                          <Badge variant={faceAccuracy >= 90 ? "default" : faceAccuracy >= 70 ? "secondary" : "destructive"}>
+                            {faceAccuracy.toFixed(1)}%
+                          </Badge>
+                        </div>
+                        <div className="w-full bg-green-200 rounded-full h-2 mb-2">
+                          <div 
+                            className="bg-green-600 h-2 rounded-full transition-all duration-500" 
+                            style={{ width: `${faceAccuracy}%` }}
+                          ></div>
+                        </div>
+                        <div className="text-xs text-green-700">
+                          {faceAccuracy >= 90 ? 'Sangat Akurat' : 
+                           faceAccuracy >= 70 ? 'Cukup Akurat' : 'Kurang Akurat'}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {/* Recognition Details */}
+                {recognitionDetails && (
+                  <div className="max-w-md mx-auto">
+                    <Card className="border-blue-200 bg-blue-50">
+                      <CardContent className="p-4">
+                        <h4 className="text-sm font-medium text-blue-800 mb-2">Detail Verifikasi</h4>
+                        <div className="space-y-1 text-xs text-blue-700">
+                          <div className="flex justify-between">
+                            <span>Status:</span>
+                            <span className="font-medium">{recognitionDetails.success ? 'Terverifikasi' : 'Gagal'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Confidence Score:</span>
+                            <span className="font-medium">{(recognitionDetails.confidence * 100).toFixed(1)}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Match Quality:</span>
+                            <span className="font-medium">
+                              {recognitionDetails.confidence >= 0.9 ? 'Excellent' : 
+                               recognitionDetails.confidence >= 0.7 ? 'Good' : 'Fair'}
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
                   <Clock className="w-4 h-4" />
@@ -432,7 +486,7 @@ export default function AttendancePage() {
                 </div>
 
                 <Button onClick={handleDone} size="lg">
-                  Done
+                  Selesai
                 </Button>
               </div>
             )}

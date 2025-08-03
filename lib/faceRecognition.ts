@@ -21,17 +21,20 @@ export function simulateFaceRecognition(
       const isSuccessful = randomConfidence > 0.2;
       
       if (isSuccessful) {
+        // Generate more realistic confidence score
+        const baseConfidence = 0.75 + (randomConfidence * 0.25); // 75-100%
         resolve({
           success: true,
-          confidence: 0.85 + (randomConfidence * 0.15), // 85-100% confidence
+          confidence: baseConfidence,
           matchedStudentId: studentId,
-          message: 'Face recognition successful. Identity verified.'
+          message: `Pengenalan wajah berhasil. Identitas terverifikasi dengan akurasi ${(baseConfidence * 100).toFixed(1)}%.`
         });
       } else {
+        const lowConfidence = randomConfidence * 0.6; // 0-60% confidence
         resolve({
           success: false,
-          confidence: randomConfidence * 0.7, // 0-70% confidence
-          message: 'Face recognition failed. Please try again with better lighting.'
+          confidence: lowConfidence,
+          message: `Pengenalan wajah gagal (${(lowConfidence * 100).toFixed(1)}% akurasi). Silakan coba lagi dengan pencahayaan yang lebih baik.`
         });
       }
     }, 2000); // 2 second delay to simulate processing

@@ -54,7 +54,7 @@ export interface ActivityLog {
   id: string;
   student_id?: string;
   lecturer_id?: string;
-  activity_type: 'Login' | 'Attendance' | 'Class_Added' | 'Export_Data';
+  activity_type: 'Login' | 'Attendance' | 'Class_Added' | 'Export_Data' | 'Face_Registration';
   time: string;
   details?: string;
 }
