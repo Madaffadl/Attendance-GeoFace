@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Sidebar } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -158,29 +159,23 @@ export default function LecturerDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center">
-                <GraduationCap className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">Lecturer Dashboard</h1>
-                <p className="text-sm text-gray-600">Welcome back, {user.name}</p>
-              </div>
-            </div>
-            <Button variant="outline" onClick={handleLogout} className="flex items-center gap-2">
-              <LogOut className="w-4 h-4" />
-              Logout
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <Sidebar user={user} onLogout={handleLogout} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Main Content */}
+      <div className="flex-1">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b">
+          <div className="px-6 py-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+              <p className="text-gray-600">Selamat datang kembali, {user.name}</p>
+            </div>
+          </div>
+        </header>
+
+        <main className="p-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
@@ -338,9 +333,18 @@ export default function LecturerDashboard() {
                     
                     <div className="flex gap-2">
                       <Button 
+                        onClick={() => router.push(`/lecturer/classes/${classItem.id}`)}
                         variant="outline" 
                         size="sm"
+                        className="flex items-center gap-2"
+                      >
+                        <Users className="w-4 h-4" />
+                        Detail Kelas
+                      </Button>
+                      <Button 
                         onClick={() => handleExportAttendance(classItem.id, classItem.class_name)}
+                        variant="outline" 
+                        size="sm"
                         className="flex items-center gap-2"
                       >
                         <Download className="w-4 h-4" />
@@ -353,7 +357,8 @@ export default function LecturerDashboard() {
             </div>
           )}
         </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

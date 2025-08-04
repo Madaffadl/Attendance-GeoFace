@@ -50,7 +50,7 @@ export const mockClasses: Class[] = [
     id: '1',
     class_code: 'CS101',
     class_name: 'Introduction to Programming',
-    schedule: 'Monday 08:00-10:00',
+    schedule: 'Senin 08:00-10:00',
     lecturer_id: '1',
     lecturer_name: 'Dr. Sarah Wilson',
     location: {
@@ -63,7 +63,7 @@ export const mockClasses: Class[] = [
     id: '2',
     class_code: 'CS201',
     class_name: 'Data Structures and Algorithms',
-    schedule: 'Wednesday 10:00-12:00',
+    schedule: 'Rabu 10:00-12:00',
     lecturer_id: '1',
     lecturer_name: 'Dr. Sarah Wilson',
     location: {
@@ -76,7 +76,7 @@ export const mockClasses: Class[] = [
     id: '3',
     class_code: 'IS301',
     class_name: 'Database Systems',
-    schedule: 'Friday 13:00-15:00',
+    schedule: 'Jumat 13:00-15:00',
     lecturer_id: '2',
     lecturer_name: 'Prof. David Brown',
     location: {
@@ -97,7 +97,7 @@ export const mockAttendance: Attendance[] = [
       latitude: -6.2088,
       longitude: 106.8456
     },
-    time: '2024-01-15T08:05:00Z',
+    time: '2024-12-16T08:05:00Z',
     face_recognition_status: 'Matched'
   },
   {
@@ -109,7 +109,43 @@ export const mockAttendance: Attendance[] = [
       latitude: -6.2088,
       longitude: 106.8456
     },
-    time: '2024-01-15T08:03:00Z',
+    time: '2024-12-16T08:03:00Z',
+    face_recognition_status: 'Matched'
+  },
+  {
+    id: '3',
+    student_id: '3',
+    class_id: '1',
+    status: 'Present',
+    location: {
+      latitude: -6.2088,
+      longitude: 106.8456
+    },
+    time: '2024-12-15T08:07:00Z',
+    face_recognition_status: 'Matched'
+  },
+  {
+    id: '4',
+    student_id: '1',
+    class_id: '2',
+    status: 'Present',
+    location: {
+      latitude: -6.2088,
+      longitude: 106.8456
+    },
+    time: '2024-12-15T10:05:00Z',
+    face_recognition_status: 'Matched'
+  },
+  {
+    id: '5',
+    student_id: '2',
+    class_id: '3',
+    status: 'Present',
+    location: {
+      latitude: -6.2088,
+      longitude: 106.8456
+    },
+    time: '2024-12-14T13:05:00Z',
     face_recognition_status: 'Matched'
   }
 ];
