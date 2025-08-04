@@ -15,7 +15,8 @@ import {
   CheckCircle, 
   AlertCircle,
   RefreshCw,
-  User
+  User,
+  Target
 } from 'lucide-react';
 import { Class } from '@/types';
 import { getCurrentLocation, LocationCoordinates } from '@/lib/geolocation';
