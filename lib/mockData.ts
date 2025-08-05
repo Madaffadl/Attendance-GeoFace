@@ -79,10 +79,15 @@ export const mockClasses: Class[] = [
     schedule: 'Jumat 13:00-15:00',
     lecturer_id: '2',
     lecturer_name: 'Prof. David Brown',
+    // location: {
+    //   latitude: -6.2088,
+    //   longitude: 106.8456,
+    //   radius: 50
+    // }
     location: {
-      latitude: -6.2088,
-      longitude: 106.8456,
-      radius: 50
+      latitude: -6.9663,  // Latitude untuk Kota Semarang
+      longitude: 110.4203 // Longitude untuk Kota SemarangÏ
+      radius: 50000
     }
   }
 ];
@@ -94,8 +99,8 @@ export const mockAttendance: Attendance[] = [
     class_id: '1',
     status: 'Present',
     location: {
-      latitude: -6.2088,
-      longitude: 106.8456
+      latitude: -6.9663,
+      longitude: 110.4203
     },
     time: '2024-12-16T08:05:00Z',
     face_recognition_status: 'Matched'
