@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { mockClasses, mockEnrollments } from '@/lib/mockData';
+import { mockClasses, mockEnrollments, mockLecturers } from '@/lib/mockData';
 
 export async function GET(request: NextRequest) {
   try {
@@ -62,6 +62,18 @@ export async function POST(request: NextRequest) {
       }, { status: 409 });
     }
 
+    // Validate lecturer exists
+    const lecturer = mockLecturers.find(l => l.id === lecturer_id);
+    if (!lecturer) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Lecturer not found'
+        },
+        { status: 404 }
+      );
+    }
+
     // Create new class
     const newClass = {
       id: (mockClasses.length + 1).toString(),
@@ -69,6 +81,7 @@ export async function POST(request: NextRequest) {
       class_name,
       schedule,
       lecturer_id,
+      lecturer_name: lecturer.name,
       location: location || {
         latitude: -6.2088,
         longitude: 106.8456,

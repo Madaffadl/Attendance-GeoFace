@@ -148,7 +148,7 @@ export default function StudentDashboard() {
                     <div className="flex items-start justify-between">
                       <div>
                         <CardTitle className="text-lg">{classItem.class_name}</CardTitle>
-                        <CardDescription>{classItem.class_code}</CardDescription>
+                        <CardDescription>{classItem.lecturer_name}</CardDescription>
                       </div>
                       <Badge variant="outline">{classItem.class_code}</Badge>
                     </div>
@@ -160,28 +160,26 @@ export default function StudentDashboard() {
                         {classItem.schedule}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <User className="w-4 h-4" />
-                        {classItem.lecturer_name}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
                         <MapPin className="w-4 h-4" />
                         Campus Location
                       </div>
                     </div>
                     
-                    <Button 
-                      onClick={() => handleAttendClass(classItem.id)}
-                      className="w-full"
-                    >
-                      Mark Attendance
-                     <Button 
-                       onClick={() => router.push(`/student/register-face/${classItem.id}`)}
-                       variant="outline"
-                       className="flex-1"
-                     >
-                       Register Face
-                     </Button>
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleAttendClass(classItem.id)}
+                        className="flex-1"
+                      >
+                        Mark Attendance
+                      </Button>
+                      <Button
+                        onClick={() => router.push(`/student/register-face/${classItem.id}`)}
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        Register Face
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
