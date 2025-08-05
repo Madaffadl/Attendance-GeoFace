@@ -34,30 +34,38 @@ const sidebarItems = [
     title: 'Kelas Saya',
     href: '/lecturer/classes',
     icon: BookOpen
+      active: pathname === '/lecturer/dashboard'
   },
   {
     title: 'Mahasiswa',
     href: '/lecturer/students',
     icon: Users
+      active: pathname.startsWith('/lecturer/classes')
   },
   {
     title: 'Jadwal',
     href: '/lecturer/schedule',
     icon: Calendar
+      active: pathname.startsWith('/lecturer/students')
   },
   {
     title: 'Laporan',
     href: '/lecturer/reports',
     icon: FileText
+      active: pathname === '/lecturer/schedule'
   },
   {
     title: 'Pengaturan',
     href: '/lecturer/settings',
     icon: Settings
+      active: pathname === '/lecturer/reports'
   }
 ];
 
 export function Sidebar({ user, onLogout }: SidebarProps) {
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+      active: pathname === '/lecturer/settings'
+
   const pathname = usePathname();
 
   return (
@@ -104,7 +112,11 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
                     isActive
                       ? "bg-emerald-100 text-emerald-700"
                       : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                  )}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                    item.active 
+                      ? 'text-blue-600 bg-blue-50 border-r-2 border-blue-600' 
+                      : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                  }`}
                 >
                   <Icon className="w-4 h-4" />
                   {item.title}
