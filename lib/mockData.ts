@@ -87,7 +87,7 @@ export const mockClasses: Class[] = [
     location: {
       latitude: -6.9663,  // Latitude untuk Kota Semarang
       longitude: 110.4203 // Longitude untuk Kota SemarangÏ
-      radius: 50000
+      radius: 500
     }
   }
 ];
