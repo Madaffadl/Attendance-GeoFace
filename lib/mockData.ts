@@ -147,10 +147,34 @@ export const mockAttendance: Attendance[] = [
     class_id: '3',
     status: 'Present',
     location: {
-      latitude: -6.2088,
-      longitude: 106.8456
+      latitude: -6.9663,
+      longitude: 110.4203
     },
     time: '2024-12-14T13:05:00Z',
+    face_recognition_status: 'Matched'
+  },
+  {
+    id: '6',
+    student_id: '1',
+    class_id: '1',
+    status: 'Present',
+    location: {
+      latitude: -6.9663,
+      longitude: 110.4203
+    },
+    time: '2024-12-14T08:05:00Z',
+    face_recognition_status: 'Matched'
+  },
+  {
+    id: '7',
+    student_id: '3',
+    class_id: '2',
+    status: 'Present',
+    location: {
+      latitude: -6.9663,
+      longitude: 110.4203
+    },
+    time: '2024-12-13T10:05:00Z',
     face_recognition_status: 'Matched'
   }
 ];
