@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { Sidebar } from '@/components/ui/sidebar';
+import { LecturerSidebar } from '@/components/ui/sidebar';
 import { 
   ArrowLeft, 
   Users, 
@@ -196,7 +196,7 @@ export default function ClassDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <Sidebar user={user} onLogout={handleLogout} />
+      <LecturerSidebar user={user} onLogout={handleLogout} />
 
       {/* Main Content */}
       <div className="flex-1">
