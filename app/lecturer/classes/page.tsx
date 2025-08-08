@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sidebar } from '@/components/ui/sidebar';
+import { LecturerSidebar } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -146,7 +146,7 @@ export default function ClassesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar user={user} onLogout={handleLogout} />
+      <LecturerSidebar user={user} onLogout={handleLogout} />
 
       <div className="flex-1">
         <header className="bg-white shadow-sm border-b">
