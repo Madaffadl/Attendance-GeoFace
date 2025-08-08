@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import Image from 'next/image';
 import { Calendar, Clock, MapPin, LogOut, User } from 'lucide-react';
 import { Class } from '@/types';
 
@@ -107,9 +108,11 @@ export default function StudentDashboard() {
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
-              <img 
-                src={user.photo} 
+              <Image
+                src={user.photo}
                 alt={user.name}
+                width={48}
+                height={48}
                 className="w-12 h-12 rounded-full object-cover"
               />
               <div>

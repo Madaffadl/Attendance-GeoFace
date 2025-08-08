@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,52 +62,53 @@ export default function ClassDetailPage() {
     }
 
     setUser(parsedUser);
+
+    const fetchClassData = async () => {
+      try {
+        // Fetch class data
+        const classResponse = await fetch('/api/classes');
+        const classData = await classResponse.json();
+
+        if (classData.success) {
+          const foundClass = classData.classes.find((cls: Class) => cls.id === classId);
+          if (foundClass) {
+            setClassData(foundClass);
+
+            // Get enrolled students
+            const enrolledStudentIds = Object.keys(mockEnrollments).filter(
+              studentId => mockEnrollments[studentId].includes(classId)
+            );
+            const enrolledStudents = mockStudents.filter(
+              student => enrolledStudentIds.includes(student.id)
+            );
+            setStudents(enrolledStudents);
+          }
+        }
+
+        // Fetch attendance records
+        const attendanceResponse = await fetch(`/api/attendance?classId=${classId}`);
+        const attendanceData = await attendanceResponse.json();
+
+        if (attendanceData.success) {
+          const recordsWithNames = attendanceData.attendance.map((record: Attendance) => {
+            const student = mockStudents.find(s => s.id === record.student_id);
+            return {
+              ...record,
+              student_name: student?.name || 'Unknown',
+              date: new Date(record.time).toISOString().split('T')[0]
+            };
+          });
+          setAttendanceRecords(recordsWithNames);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchClassData();
   }, [router, classId]);
-
-  const fetchClassData = async () => {
-    try {
-      // Fetch class data
-      const classResponse = await fetch('/api/classes');
-      const classData = await classResponse.json();
-      
-      if (classData.success) {
-        const foundClass = classData.classes.find((cls: Class) => cls.id === classId);
-        if (foundClass) {
-          setClassData(foundClass);
-          
-          // Get enrolled students
-          const enrolledStudentIds = Object.keys(mockEnrollments).filter(
-            studentId => mockEnrollments[studentId].includes(classId)
-          );
-          const enrolledStudents = mockStudents.filter(
-            student => enrolledStudentIds.includes(student.id)
-          );
-          setStudents(enrolledStudents);
-        }
-      }
-
-      // Fetch attendance records
-      const attendanceResponse = await fetch(`/api/attendance?classId=${classId}`);
-      const attendanceData = await attendanceResponse.json();
-      
-      if (attendanceData.success) {
-        const recordsWithNames = attendanceData.attendance.map((record: Attendance) => {
-          const student = mockStudents.find(s => s.id === record.student_id);
-          return {
-            ...record,
-            student_name: student?.name || 'Unknown',
-            date: new Date(record.time).toISOString().split('T')[0]
-          };
-        });
-        setAttendanceRecords(recordsWithNames);
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -164,8 +166,9 @@ export default function ClassDetailPage() {
   };
 
   const getUniqueAttendanceDates = () => {
-    const dates = [...new Set(attendanceRecords.map(record => record.date))];
-    return dates.sort().reverse(); // Latest first
+    const dates = attendanceRecords.map(record => record.date);
+    const uniqueDates = dates.filter((date, index) => dates.indexOf(date) === index);
+    return uniqueDates.sort().reverse(); // Latest first
   };
 
   if (isLoading) {
@@ -299,9 +302,11 @@ export default function ClassDetailPage() {
                 {students.map((student) => (
                   <div key={student.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-4">
-                      <img 
-                        src={student.photo} 
+                      <Image
+                        src={student.photo}
                         alt={student.name}
+                        width={40}
+                        height={40}
                         className="w-10 h-10 rounded-full object-cover"
                       />
                       <div>

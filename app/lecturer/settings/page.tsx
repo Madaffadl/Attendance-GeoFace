@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sidebar } from '@/components/ui/sidebar';
+import { LecturerSidebar as Sidebar } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -108,8 +108,9 @@ export default function SettingsPage() {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      if (!user) return;
       // Update user data in localStorage
-      const updatedUser = { ...user, name: profileData.name };
+      const updatedUser: User = { ...user, name: profileData.name };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setUser(updatedUser);
       

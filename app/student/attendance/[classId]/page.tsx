@@ -68,6 +68,28 @@ export default function AttendancePage() {
     }
 
     setUser(parsedUser);
+
+    const fetchClassData = async () => {
+      try {
+        const response = await fetch('/api/classes');
+        const data = await response.json();
+
+        if (data.success) {
+          const foundClass = data.classes.find((cls: Class) => cls.id === classId);
+          if (foundClass) {
+            setClassData(foundClass);
+          } else {
+            setError('Class not found');
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching class data:', error);
+        setError('Failed to load class data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchClassData();
   }, [router, classId]);
 
@@ -76,27 +98,6 @@ export default function AttendancePage() {
       checkLocation();
     }
   }, [step]);
-
-  const fetchClassData = async () => {
-    try {
-      const response = await fetch('/api/classes');
-      const data = await response.json();
-      
-      if (data.success) {
-        const foundClass = data.classes.find((cls: Class) => cls.id === classId);
-        if (foundClass) {
-          setClassData(foundClass);
-        } else {
-          setError('Class not found');
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching class data:', error);
-      setError('Failed to load class data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const checkLocation = async () => {
     try {

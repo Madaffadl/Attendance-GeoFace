@@ -36,7 +36,12 @@ function SidebarItem({ href, icon: Icon, label, isActive }: SidebarItemProps) {
   );
 }
 
-export function LecturerSidebar() {
+interface LecturerSidebarProps {
+  user?: { name?: string; identifier?: string; photo?: string };
+  onLogout?: () => void;
+}
+
+export function LecturerSidebar({ user, onLogout }: LecturerSidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -91,15 +96,20 @@ export function LecturerSidebar() {
       <div className="border-t p-4">
         <div className="flex items-center gap-3 mb-4">
           <Avatar className="h-8 w-8">
-            <AvatarImage src="/placeholder-avatar.jpg" />
-            <AvatarFallback>DS</AvatarFallback>
+            <AvatarImage src={user?.photo || '/placeholder-avatar.jpg'} />
+            <AvatarFallback>{user?.name?.[0] || 'U'}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">Dr. Sarah Johnson</p>
-            <p className="text-xs text-muted-foreground truncate">sarah.johnson@university.edu</p>
+            <p className="text-sm font-medium truncate">{user?.name || 'User'}</p>
+            <p className="text-xs text-muted-foreground truncate">{user?.identifier || ''}</p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" className="w-full justify-start gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start gap-2"
+          onClick={onLogout}
+        >
           <LogOut className="h-4 w-4" />
           Keluar
         </Button>

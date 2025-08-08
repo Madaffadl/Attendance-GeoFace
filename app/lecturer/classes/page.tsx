@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { LecturerSidebar } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
@@ -61,17 +61,13 @@ export default function ClassesPage() {
     loadClasses(parsedUser.id);
   }, [router]);
 
-  useEffect(() => {
-    filterClasses();
-  }, [searchTerm, classes]);
-
   const loadClasses = (lecturerId: string) => {
     const lecturerClasses = mockClasses.filter(cls => cls.lecturer_id === lecturerId);
     setClasses(lecturerClasses);
     setIsLoading(false);
   };
 
-  const filterClasses = () => {
+  const filterClasses = useCallback(() => {
     let filtered = classes;
 
     if (searchTerm) {
@@ -82,7 +78,11 @@ export default function ClassesPage() {
     }
 
     setFilteredClasses(filtered);
-  };
+  }, [classes, searchTerm]);
+
+  useEffect(() => {
+    filterClasses();
+  }, [filterClasses]);
 
   const handleAddClass = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
