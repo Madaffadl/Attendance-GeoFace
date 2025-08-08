@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Sidebar } from '@/components/ui/sidebar';
+import { LecturerSidebar as Sidebar } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -58,10 +59,6 @@ export default function StudentsPage() {
     loadStudents();
   }, [router]);
 
-  useEffect(() => {
-    filterStudents();
-  }, [searchTerm, selectedProgram, students]);
-
   const loadStudents = () => {
     // Get students enrolled in lecturer's classes
     const lecturerClasses = mockClasses.filter(cls => cls.lecturer_id === '1'); // Assuming lecturer ID 1
@@ -79,7 +76,7 @@ export default function StudentsPage() {
     setIsLoading(false);
   };
 
-  const filterStudents = () => {
+  const filterStudents = useCallback(() => {
     let filtered = students;
 
     if (searchTerm) {
@@ -95,7 +92,11 @@ export default function StudentsPage() {
     }
 
     setFilteredStudents(filtered);
-  };
+  }, [students, searchTerm, selectedProgram]);
+
+  useEffect(() => {
+    filterStudents();
+  }, [filterStudents]);
 
   const getStudentAttendanceRate = (studentId: string) => {
     const studentAttendance = mockAttendance.filter(att => att.student_id === studentId);
@@ -139,7 +140,9 @@ export default function StudentsPage() {
     window.URL.revokeObjectURL(url);
   };
 
-  const programs = [...new Set(students.map(s => s.program_study))];
+  const programs = students
+    .map(s => s.program_study)
+    .filter((program, index, self) => self.indexOf(program) === index);
 
   if (isLoading) {
     return (
@@ -287,9 +290,11 @@ export default function StudentsPage() {
                       <div key={student.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-4">
-                            <img 
-                              src={student.photo} 
+                            <Image
+                              src={student.photo}
                               alt={student.name}
+                              width={64}
+                              height={64}
                               className="w-16 h-16 rounded-full object-cover"
                             />
                             <div className="flex-1">

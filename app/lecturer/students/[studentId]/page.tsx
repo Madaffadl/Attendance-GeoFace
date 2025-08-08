@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
-import { Sidebar } from '@/components/ui/sidebar';
+import { LecturerSidebar as Sidebar } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -56,22 +57,23 @@ export default function StudentDetailPage() {
     }
 
     setUser(parsedUser);
+
+    const loadStudentData = () => {
+      // Find student
+      const foundStudent = mockStudents.find(s => s.id === studentId);
+      if (foundStudent) {
+        setStudent(foundStudent);
+
+        // Get attendance records for this student
+        const studentAttendance = mockAttendance.filter(att => att.student_id === studentId);
+        setAttendanceRecords(studentAttendance);
+      }
+
+      setIsLoading(false);
+    };
+
     loadStudentData();
   }, [router, studentId]);
-
-  const loadStudentData = () => {
-    // Find student
-    const foundStudent = mockStudents.find(s => s.id === studentId);
-    if (foundStudent) {
-      setStudent(foundStudent);
-      
-      // Get attendance records for this student
-      const studentAttendance = mockAttendance.filter(att => att.student_id === studentId);
-      setAttendanceRecords(studentAttendance);
-    }
-    
-    setIsLoading(false);
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -170,9 +172,11 @@ export default function StudentDetailPage() {
           <Card className="mb-8">
             <CardHeader>
               <div className="flex items-start gap-6">
-                <img 
-                  src={student.photo} 
+                <Image
+                  src={student.photo}
                   alt={student.name}
+                  width={96}
+                  height={96}
                   className="w-24 h-24 rounded-full object-cover"
                 />
                 <div className="flex-1">

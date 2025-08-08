@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { 
   ArrowLeft, 
   Camera, 
@@ -15,7 +14,6 @@ import {
   AlertCircle,
   RefreshCw,
   User,
-  Upload
 } from 'lucide-react';
 import { Class } from '@/types';
 
@@ -66,6 +64,28 @@ export default function RegisterFacePage() {
     }
 
     setUser(parsedUser);
+
+    const fetchClassData = async () => {
+      try {
+        const response = await fetch('/api/classes');
+        const data = await response.json();
+
+        if (data.success) {
+          const foundClass = data.classes.find((cls: Class) => cls.id === classId);
+          if (foundClass) {
+            setClassData(foundClass);
+          } else {
+            setError('Class not found');
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching class data:', error);
+        setError('Failed to load class data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchClassData();
   }, [router, classId]);
 
@@ -74,27 +94,6 @@ export default function RegisterFacePage() {
       startCamera();
     }
   }, [step]);
-
-  const fetchClassData = async () => {
-    try {
-      const response = await fetch('/api/classes');
-      const data = await response.json();
-      
-      if (data.success) {
-        const foundClass = data.classes.find((cls: Class) => cls.id === classId);
-        if (foundClass) {
-          setClassData(foundClass);
-        } else {
-          setError('Class not found');
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching class data:', error);
-      setError('Failed to load class data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const startCamera = async () => {
     try {
@@ -300,7 +299,12 @@ export default function RegisterFacePage() {
                     <span>Progress</span>
                     <span>{faceImages.length}/{requiredImages} foto</span>
                   </div>
-                  <Progress value={(faceImages.length / requiredImages) * 100} className="h-2" />
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full"
+                      style={{ width: `${(faceImages.length / requiredImages) * 100}%` }}
+                    />
+                  </div>
                 </div>
 
                 <div className="relative max-w-md mx-auto">
@@ -337,7 +341,7 @@ export default function RegisterFacePage() {
 
                 {message && (
                   <Alert className="max-w-md mx-auto">
-                    <Upload className="h-4 w-4" />
+                    <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
                       {message}
                     </AlertDescription>
@@ -361,7 +365,12 @@ export default function RegisterFacePage() {
                     {message}
                   </p>
                   <div className="max-w-md mx-auto">
-                    <Progress value={registrationProgress} className="h-3" />
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div
+                        className="bg-blue-600 h-3 rounded-full"
+                        style={{ width: `${registrationProgress}%` }}
+                      />
+                    </div>
                     <p className="text-sm text-gray-500 mt-2">{Math.round(registrationProgress)}% selesai</p>
                   </div>
                 </div>
