@@ -15,7 +15,6 @@ import {
   Users, 
   Calendar, 
   Download, 
-  GraduationCap,
   Clock,
   MapPin,
   TrendingUp,
@@ -38,7 +37,6 @@ export default function LecturerDashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is logged in
     const userData = localStorage.getItem('user');
     if (!userData) {
       router.push('/login');
@@ -111,7 +109,6 @@ export default function LecturerDashboard() {
       const data = await response.json();
       
       if (data.success) {
-        // Create CSV content
         const csvContent = [
           ['Student ID', 'Class ID', 'Status', 'Time', 'Location'],
           ...data.attendance.map((att: any) => [
@@ -123,7 +120,6 @@ export default function LecturerDashboard() {
           ])
         ].map(row => row.join(',')).join('\n');
 
-        // Create and download file
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -147,13 +143,13 @@ export default function LecturerDashboard() {
     const today = new Date().toLocaleDateString('id-ID', { weekday: 'long' });
     return cls.schedule.includes(today.charAt(0).toUpperCase() + today.slice(1));
   });
+
   return (
     <LayoutWrapper 
       title="Dashboard" 
       subtitle={`Selamat datang kembali, ${user.name}`}
       showSearch={true}
     >
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -163,6 +159,8 @@ export default function LecturerDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{classes.length}</div>
             <p className="text-xs text-muted-foreground">Semester ini</p>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Kelas Hari Ini</CardTitle>
@@ -173,7 +171,6 @@ export default function LecturerDashboard() {
             <p className="text-xs text-muted-foreground">Jadwal mengajar</p>
           </CardContent>
         </Card>
-          </CardContent>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Mahasiswa</CardTitle>
@@ -183,7 +180,6 @@ export default function LecturerDashboard() {
             <div className="text-2xl font-bold">42</div>
             <p className="text-xs text-muted-foreground">Di semua kelas</p>
           </CardContent>
-        </Card>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -197,10 +193,10 @@ export default function LecturerDashboard() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
       <div className="mb-8">
         <QuickActions user={user} />
-      {/* Classes Section */}
+      </div>
+
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900">Kelas Saya</h2>
@@ -271,7 +267,7 @@ export default function LecturerDashboard() {
             </DialogContent>
           </Dialog>
         </div>
-      </div>
+
         {classes.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
