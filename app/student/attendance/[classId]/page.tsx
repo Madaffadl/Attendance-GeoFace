@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { ContextualNav } from '@/components/ui/contextual-nav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -253,21 +254,16 @@ export default function AttendancePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16">
-            <Button variant="ghost" onClick={handleBack} className="flex items-center gap-2 mr-4">
-              <ArrowLeft className="w-4 h-4" />
-              Back
-            </Button>
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">Mark Attendance</h1>
-              <p className="text-sm text-gray-600">{classData.class_name}</p>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Contextual Navigation */}
+      <ContextualNav
+        title="Tandai Kehadiran"
+        subtitle={classData.class_name}
+        backUrl="/student/dashboard"
+        status={{
+          label: step === 'success' ? 'Berhasil' : step === 'processing' ? 'Memproses' : 'Dalam Proses',
+          variant: step === 'success' ? 'default' : 'secondary'
+        }}
+      />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Class Info Card */}
