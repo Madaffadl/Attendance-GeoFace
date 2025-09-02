@@ -69,6 +69,7 @@ export default function StudentDashboard() {
     const today = new Date().toLocaleDateString('id-ID', { weekday: 'long' });
     return cls.schedule.includes(today.charAt(0).toUpperCase() + today.slice(1));
   });
+
   return (
     <LayoutWrapper 
       title="Dashboard" 
@@ -91,6 +92,12 @@ export default function StudentDashboard() {
               <p className="text-sm text-gray-600">NIM: {user.identifier}</p>
             </div>
           </CardTitle>
+          <CardDescription>
+            {user.email} • {user.program_study}
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card>
@@ -103,7 +110,6 @@ export default function StudentDashboard() {
             <p className="text-xs text-muted-foreground">Semester ini</p>
           </CardContent>
         </Card>
-          <CardDescription>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Kelas Hari Ini</CardTitle>
@@ -114,7 +120,6 @@ export default function StudentDashboard() {
             <p className="text-xs text-muted-foreground">Jadwal hari ini</p>
           </CardContent>
         </Card>
-            {user.email} • {user.program_study}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tingkat Kehadiran</CardTitle>
@@ -126,12 +131,12 @@ export default function StudentDashboard() {
           </CardContent>
         </Card>
       </div>
-          </CardDescription>
+
       {/* Quick Actions */}
       <div className="mb-8">
         <QuickActions user={user} />
       </div>
-        </CardHeader>
+
       {/* Classes Section */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -140,7 +145,6 @@ export default function StudentDashboard() {
             {classes.length} Kelas Terdaftar
           </Badge>
         </div>
-      </Card>
         {classes.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
