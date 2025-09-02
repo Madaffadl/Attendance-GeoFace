@@ -1,11 +1,9 @@
-// {"code":"rate-limited","message":"You have hit the rate limit. Please upgrade to keep chatting.","providerLimitHit":false,"isRetryable":true}
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
-import { LecturerSidebar as Sidebar } from '@/components/ui/sidebar';
+import { LayoutWrapper } from '@/components/ui/layout-wrapper';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,20 +12,15 @@ import {
   ArrowLeft,
   User,
   Mail,
-  Phone,
   GraduationCap,
-  Calendar,
-  MapPin,
-  Clock,
-  CheckCircle,
-  XCircle,
   Download,
-  BookOpen
+  BookOpen,
+  Users
 } from 'lucide-react';
 import { Student, Attendance, Class } from '@/types';
 import { mockStudents, mockAttendance, mockClasses, mockEnrollments } from '@/lib/mockData';
 
-interface User {
+interface AuthUser {
   id: string;
   name: string;
   userType: string;
@@ -35,7 +28,7 @@ interface User {
 }
 
 export default function ClassDetailPage() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [classData, setClassData] = useState<Class | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
@@ -46,7 +39,6 @@ export default function ClassDetailPage() {
   const classId = params.classId as string;
 
   useEffect(() => {
-    // Check if user is logged in
     const userData = localStorage.getItem('user');
     if (!userData) {
       router.push('/login');
@@ -62,12 +54,10 @@ export default function ClassDetailPage() {
     setUser(parsedUser);
 
     const loadClassData = () => {
-      // Find class
       const foundClass = mockClasses.find(c => c.id === classId);
       if (foundClass) {
         setClassData(foundClass);
 
-        // Get enrolled students
         const enrolledStudentIds = Object.keys(mockEnrollments).filter(studentId =>
           mockEnrollments[studentId].includes(classId)
         );
@@ -76,7 +66,6 @@ export default function ClassDetailPage() {
         );
         setStudents(classStudents);
 
-        // Get attendance records for this class
         const classAttendance = mockAttendance.filter(att => att.class_id === classId);
         setAttendance(classAttendance);
       }
@@ -87,15 +76,10 @@ export default function ClassDetailPage() {
     loadClassData();
   }, [router, classId]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    router.push('/login');
-  };
-
   const getStudentAttendanceRate = (studentId: string) => {
     const studentAttendance = attendance.filter(att => att.student_id === studentId);
     const presentCount = studentAttendance.filter(att => att.status === 'Present').length;
-    const totalSessions = studentAttendance.length > 0 ? new Set(studentAttendance.map(a => a.time.split('T')[0])).size : 0;
+    const totalSessions = new Set(attendance.map(a => a.time.split('T')[0])).size;
     
     if (totalSessions === 0) return 0;
     return Math.round((presentCount / totalSessions) * 100);
@@ -112,7 +96,7 @@ export default function ClassDetailPage() {
         student.email,
         `${getStudentAttendanceRate(student.id)}%`
       ])
-    ].map(row => row.join(',')).join('\\n');
+    ].map(row => row.join(',')).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -135,56 +119,38 @@ export default function ClassDetailPage() {
 
   if (!user || !classData) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="w-full max-w-md">
+      <LayoutWrapper title="Error" subtitle="Kelas tidak ditemukan">
+        <Card>
           <CardContent className="text-center py-12">
             <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Kelas Tidak Ditemukan</h3>
             <p className="text-gray-600">Data kelas tidak dapat ditemukan.</p>
+            <Button onClick={() => router.back()} className="mt-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Kembali
+            </Button>
           </CardContent>
         </Card>
-      </div>
+      </LayoutWrapper>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar user={user} onLogout={handleLogout} />
-
-      <div className="flex-1">
-        <header className="bg-white shadow-sm border-b">
-          <div className="px-6 py-4">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" onClick={() => router.back()} className="flex items-center gap-2">
-                <ArrowLeft className="w-4 h-4" />
-                Kembali
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">{classData.class_name}</h1>
-                <p className="text-gray-600">{classData.class_code} - {classData.schedule}</p>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <main className="p-6">
-          {/* Class Details */}
-          <Card className="mb-8">
-            <CardHeader>
-                <div className="flex items-start justify-between">
-                    <div>
-                        <CardTitle className="text-2xl mb-2">{classData.class_name}</CardTitle>
-                        <CardDescription>
-                            Berikut adalah detail kelas dan daftar mahasiswa yang terdaftar.
-                        </CardDescription>
-                    </div>
-                    <Button onClick={handleExportClassData} className="flex items-center gap-2">
-                      <Download className="w-4 h-4" />
-                      Export Data
-                    </Button>
-                </div>
-            </CardHeader>
-          </Card>
+    <LayoutWrapper
+      title={classData.class_name}
+      subtitle={`${classData.class_code} - ${classData.schedule}`}
+      breadcrumbItems={[
+        { label: 'Dashboard', href: '/lecturer/dashboard' },
+        { label: 'Kelas', href: '/lecturer/classes' },
+        { label: classData.class_name, current: true }
+      ]}
+    >
+        <div className="flex justify-end mb-4">
+            <Button onClick={handleExportClassData} className="flex items-center gap-2">
+              <Download className="w-4 h-4" />
+              Export Data
+            </Button>
+        </div>
 
           {/* Student List */}
           <Card>
@@ -204,7 +170,8 @@ export default function ClassDetailPage() {
                     const attendanceRate = getStudentAttendanceRate(student.id);
                     
                     return (
-                      <div key={student.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <Card key={student.id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-4">
                             <Image
@@ -255,15 +222,14 @@ export default function ClassDetailPage() {
                             </Button>
                           </div>
                         </div>
-                      </div>
+                        </CardContent>
+                      </Card>
                     );
                   })}
                 </div>
               )}
             </CardContent>
           </Card>
-        </main>
-      </div>
-    </div>
+    </LayoutWrapper>
   );
 }
