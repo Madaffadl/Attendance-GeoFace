@@ -1,5 +1,6 @@
 import { Student, Lecturer, Class, Attendance, FaceRecognition, ActivityLog } from '@/types';
 
+// Data Mahasiswa, Dosen, dan lainnya tetap sama...
 export const mockStudents: Student[] = [
   {
     id: '1',
@@ -45,6 +46,7 @@ export const mockLecturers: Lecturer[] = [
   }
 ];
 
+
 export const mockClasses: Class[] = [
   {
     id: '1',
@@ -54,8 +56,8 @@ export const mockClasses: Class[] = [
     lecturer_id: '1',
     lecturer_name: 'Dr. Sarah Wilson',
     location: {
-      latitude: -6.2088,
-      longitude: 106.8456,
+      latitude: -6.9929,
+      longitude: 110.4280,
       radius: 50
     }
   },
@@ -67,8 +69,8 @@ export const mockClasses: Class[] = [
     lecturer_id: '1',
     lecturer_name: 'Dr. Sarah Wilson',
     location: {
-      latitude: -6.2088,
-      longitude: 106.8456,
+      latitude: -6.9929,
+      longitude: 110.4280,
       radius: 50
     }
   },
@@ -79,15 +81,10 @@ export const mockClasses: Class[] = [
     schedule: 'Jumat 13:00-15:00',
     lecturer_id: '2',
     lecturer_name: 'Prof. David Brown',
-    // location: {
-    //   latitude: -6.2088,
-    //   longitude: 106.8456,
-    //   radius: 50
-    // }
     location: {
-      latitude: -6.9663,  // Latitude untuk Kota Semarang
-      longitude: 110.4203, // Longitude untuk Kota Semarang
-      radius: 500
+      latitude: -6.9929,
+      longitude: 110.4280,
+      radius: 50
     }
   }
 ];
@@ -99,8 +96,8 @@ export const mockAttendance: Attendance[] = [
     class_id: '1',
     status: 'Present',
     location: {
-      latitude: -6.9663,
-      longitude: 110.4203
+      latitude: -6.9929,
+      longitude: 110.4280
     },
     time: '2024-12-16T08:05:00Z',
     face_recognition_status: 'Matched'
@@ -111,8 +108,8 @@ export const mockAttendance: Attendance[] = [
     class_id: '1',
     status: 'Present',
     location: {
-      latitude: -6.2088,
-      longitude: 106.8456
+      latitude: -6.9929,
+      longitude: 110.4280
     },
     time: '2024-12-16T08:03:00Z',
     face_recognition_status: 'Matched'
@@ -123,8 +120,8 @@ export const mockAttendance: Attendance[] = [
     class_id: '1',
     status: 'Present',
     location: {
-      latitude: -6.2088,
-      longitude: 106.8456
+      latitude: -6.9929,
+      longitude: 110.4280
     },
     time: '2024-12-15T08:07:00Z',
     face_recognition_status: 'Matched'
@@ -135,8 +132,8 @@ export const mockAttendance: Attendance[] = [
     class_id: '2',
     status: 'Present',
     location: {
-      latitude: -6.2088,
-      longitude: 106.8456
+      latitude: -6.9929,
+      longitude: 110.4280
     },
     time: '2024-12-15T10:05:00Z',
     face_recognition_status: 'Matched'
@@ -147,8 +144,8 @@ export const mockAttendance: Attendance[] = [
     class_id: '3',
     status: 'Present',
     location: {
-      latitude: -6.9663,
-      longitude: 110.4203
+      latitude: -6.9929,
+      longitude: 110.4280
     },
     time: '2024-12-14T13:05:00Z',
     face_recognition_status: 'Matched'
@@ -159,8 +156,8 @@ export const mockAttendance: Attendance[] = [
     class_id: '1',
     status: 'Present',
     location: {
-      latitude: -6.9663,
-      longitude: 110.4203
+      latitude: -6.9929,
+      longitude: 110.4280
     },
     time: '2024-12-14T08:05:00Z',
     face_recognition_status: 'Matched'
@@ -171,8 +168,8 @@ export const mockAttendance: Attendance[] = [
     class_id: '2',
     status: 'Present',
     location: {
-      latitude: -6.9663,
-      longitude: 110.4203
+      latitude: -6.9929,
+      longitude: 110.4280
     },
     time: '2024-12-13T10:05:00Z',
     face_recognition_status: 'Matched'
