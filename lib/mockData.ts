@@ -58,7 +58,7 @@ export const mockClasses: Class[] = [
     location: {
       latitude: -6.9929,
       longitude: 110.4280,
-      radius: 50
+      radius: 5000
     }
   },
   {
