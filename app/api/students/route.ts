@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { mockStudents, mockEnrollments } from '@/lib/mockData';
+import { mockStudents, mockEnrollments, mockClasses } from '@/lib/mockData';
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,10 +7,21 @@ export async function GET(request: NextRequest) {
     const lecturerId = searchParams.get('lecturerId');
 
     if (lecturerId) {
-      // Return students for a specific lecturer's classes
-      const enrolledStudentIds = Object.keys(mockEnrollments);
+      // Dapatkan kelas yang diajar oleh dosen
+      const lecturerClasses = mockClasses.filter(cls => cls.lecturer_id === lecturerId);
+      const lecturerClassIds = lecturerClasses.map(cls => cls.id);
+
+      // Dapatkan semua ID mahasiswa yang terdaftar di kelas-kelas tersebut
+      const enrolledStudentIds = new Set<string>();
+      Object.keys(mockEnrollments).forEach(studentId => {
+        const studentClasses = mockEnrollments[studentId];
+        if (studentClasses.some(classId => lecturerClassIds.includes(classId))) {
+          enrolledStudentIds.add(studentId);
+        }
+      });
+      
       const lecturerStudents = mockStudents.filter(student => 
-        enrolledStudentIds.includes(student.id)
+        enrolledStudentIds.has(student.id)
       );
       
       return NextResponse.json({
@@ -18,7 +29,7 @@ export async function GET(request: NextRequest) {
         students: lecturerStudents
       });
     } else {
-      // Return all students
+      // Kembalikan semua mahasiswa
       return NextResponse.json({
         success: true,
         students: mockStudents
