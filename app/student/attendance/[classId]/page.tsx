@@ -8,21 +8,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { 
-  ArrowLeft, 
-  Camera, 
-  MapPin, 
-  Clock, 
-  CheckCircle, 
+import {
+  Camera,
+  MapPin,
+  CheckCircle,
   AlertCircle,
   RefreshCw,
   User,
-  Target
+  Clock,
+  Target,
+  ArrowLeft
 } from 'lucide-react';
-import { Class } from '@/types';
-import { getCurrentLocation, LocationCoordinates } from '@/lib/geolocation';
+import { Class, Student } from '@/types';
+import { getCurrentLocation, LocationCoordinates, validateLocation } from '@/lib/geolocation';
+import { loadModels, getFaceDescriptor, compareFaces } from '@/lib/faceRecognition';
+import { mockStudents, mockClasses } from '@/lib/mockData';
 
-interface User {
+// Antarmuka untuk pengguna yang sedang login
+interface AuthUser {
   id: string;
   name: string;
   userType: string;
@@ -33,181 +36,184 @@ interface User {
 }
 
 export default function AttendancePage() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [classData, setClassData] = useState<Class | null>(null);
+  const [studentData, setStudentData] = useState<Student | null>(null);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState<'location' | 'camera' | 'processing' | 'success'>('location');
   const [location, setLocation] = useState<LocationCoordinates | null>(null);
   const [locationStatus, setLocationStatus] = useState<'checking' | 'valid' | 'invalid'>('checking');
-  const [faceImage, setFaceImage] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [faceAccuracy, setFaceAccuracy] = useState<number | null>(null);
-  const [recognitionDetails, setRecognitionDetails] = useState<any>(null);
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  
   const router = useRouter();
   const params = useParams();
   const classId = params.classId as string;
 
   useEffect(() => {
-    // Check if user is logged in
-    const userData = localStorage.getItem('user');
-    if (!userData) {
-      router.push('/login');
-      return;
-    }
-
-    const parsedUser = JSON.parse(userData);
-    if (parsedUser.userType !== 'student') {
-      router.push('/login');
-      return;
-    }
-
-    setUser(parsedUser);
-
-    const fetchClassData = async () => {
-      try {
-        const response = await fetch('/api/classes');
-        const data = await response.json();
-
-        if (data.success) {
-          const foundClass = data.classes.find((cls: Class) => cls.id === classId);
-          if (foundClass) {
-            setClassData(foundClass);
-          } else {
-            setError('Class not found');
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching class data:', error);
-        setError('Failed to load class data');
-      } finally {
-        setIsLoading(false);
+    const initialize = async () => {
+      const userData = localStorage.getItem('user');
+      if (!userData) {
+        router.push('/login');
+        return;
       }
+      const parsedUser = JSON.parse(userData) as AuthUser;
+      setUser(parsedUser);
+
+      setMessage("Memuat model AI, mohon tunggu...");
+      try {
+        await loadModels();
+        setModelsLoaded(true);
+        setMessage("");
+      } catch (e) {
+        setError("Gagal memuat model AI. Silakan muat ulang halaman.");
+        setIsLoading(false);
+        return;
+      }
+
+      const foundClass = mockClasses.find((cls: Class) => cls.id === classId);
+      const foundStudent = mockStudents.find((s: Student) => s.id === parsedUser.id);
+
+      if (foundClass) setClassData(foundClass);
+      else setError('Kelas tidak ditemukan');
+
+      if (foundStudent) setStudentData(foundStudent);
+      else setError('Data mahasiswa tidak ditemukan');
+      
+      setIsLoading(false);
     };
 
-    fetchClassData();
+    initialize();
   }, [router, classId]);
 
   useEffect(() => {
-    if (step === 'location') {
+    if (step === 'location' && modelsLoaded) {
       checkLocation();
     }
-  }, [step]);
+  }, [step, modelsLoaded]);
 
   const checkLocation = async () => {
+    if (!classData) return;
     try {
       setLocationStatus('checking');
-      setMessage('Checking your location...');
+      setMessage('Memverifikasi lokasi Anda...');
+      setError('');
       
       const currentLocation = await getCurrentLocation();
       setLocation(currentLocation);
+
+      const locationValidation = validateLocation(currentLocation, classData.location, classData.location.radius);
       
-      // For demo purposes, always show valid location
-      // In real implementation, validate against class location
       setTimeout(() => {
-        setLocationStatus('valid');
-        setMessage('Location verified! You are within the allowed area.');
-      }, 2000);
+        if(locationValidation.isValid) {
+          setLocationStatus('valid');
+          setMessage(`Lokasi terverifikasi! Anda berada ${locationValidation.distance}m dari kelas.`);
+        } else {
+          setLocationStatus('invalid');
+          setError(locationValidation.message);
+        }
+      }, 1500);
       
-    } catch (error) {
+    } catch (err) {
       setLocationStatus('invalid');
-      setError(error instanceof Error ? error.message : 'Failed to get location');
+      setError(err instanceof Error ? err.message : 'Gagal mendapatkan lokasi');
     }
   };
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        } 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
       });
-      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
       }
-      
       setStep('camera');
       setError('');
-    } catch (error) {
-      setError('Failed to access camera. Please allow camera permissions.');
+    } catch (err) {
+      setError('Gagal mengakses kamera. Mohon izinkan akses kamera di browser Anda.');
     }
   };
-
-  const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) return;
-
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
-    const context = canvas.getContext('2d');
-
-    if (context) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      context.drawImage(video, 0, 0);
-      
-      const imageData = canvas.toDataURL('image/jpeg', 0.8);
-      setFaceImage(imageData);
-      
-      // Stop the camera
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
-      
-      processAttendance(imageData);
+  
+  const processAttendance = async () => {
+    if (!videoRef.current || !user || !studentData || !studentData.face_vector || !location) {
+      setError("Data tidak lengkap untuk memproses absensi. Pastikan Anda sudah registrasi wajah.");
+      return;
     }
-  };
-
-  const processAttendance = async (imageData: string) => {
-    if (!user || !classData || !location) return;
 
     setStep('processing');
     setIsProcessing(true);
-    setMessage('Processing attendance...');
+    setMessage('Menganalisis wajah Anda...');
+    setError('');
+
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0);
+    const imageData = canvas.toDataURL('image/jpeg');
+
+    streamRef.current?.getTracks().forEach(track => track.stop());
 
     try {
+      const currentDescriptor = await getFaceDescriptor(imageData);
+      if (!currentDescriptor) {
+        throw new Error("Wajah tidak terdeteksi. Pastikan wajah Anda terlihat jelas dan terang.");
+      }
+
+      const registeredDescriptor = await getFaceDescriptor(studentData.face_vector);
+      if (!registeredDescriptor) {
+        throw new Error("Data wajah terdaftar tidak ditemukan. Silakan lakukan registrasi wajah ulang.");
+      }
+
+      const distance = compareFaces(currentDescriptor, registeredDescriptor);
+      const MATCH_THRESHOLD = 0.5;
+      const accuracy = Math.max(0, 100 - (distance / MATCH_THRESHOLD) * 100);
+      setFaceAccuracy(accuracy);
+
+      const recognitionResult = {
+        success: distance < MATCH_THRESHOLD,
+        message: distance < MATCH_THRESHOLD ? "Wajah terverifikasi" : "Wajah tidak cocok",
+        confidence: 1 - distance
+      };
+      
+      if (!recognitionResult.success) {
+        throw new Error(`Wajah tidak cocok. Tingkat kemiripan: ${accuracy.toFixed(1)}%.`);
+      }
+
+      setMessage('Mengirim data absensi...');
       const response = await fetch('/api/attendance', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           student_id: user.id,
           class_id: classId,
           location,
-          face_data: imageData
+          recognitionResult
         }),
       });
 
       const data = await response.json();
-
       if (data.success) {
         setStep('success');
-        setMessage('Attendance marked successfully!');
-        setFaceAccuracy(data.faceRecognition?.confidence * 100 || 0);
-        setRecognitionDetails(data.faceRecognition);
+        setMessage('Absensi berhasil dicatat!');
       } else {
-        setError(data.message || 'Failed to mark attendance');
-        setStep('location'); // Reset to start
+        throw new Error(data.message || 'Gagal menyimpan data absensi.');
       }
-    } catch (error) {
-      setError('Network error. Please try again.');
-      setStep('location'); // Reset to start
+    } catch (err: any) {
+      setError(err.message);
+      setStep('camera');
+      startCamera(); // Coba mulai ulang kamera jika gagal
     } finally {
       setIsProcessing(false);
     }
   };
-
+  
   const retryLocation = () => {
     setError('');
     setLocationStatus('checking');
@@ -215,10 +221,8 @@ export default function AttendancePage() {
   };
 
   const handleBack = () => {
-    // Stop camera if running
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
     }
     router.push('/student/dashboard');
   };
@@ -226,276 +230,122 @@ export default function AttendancePage() {
   const handleDone = () => {
     router.push('/student/dashboard');
   };
-
+  
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
-  if (!user || !classData) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="text-center py-12">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Error</h3>
-            <p className="text-gray-600">{error || 'Failed to load data'}</p>
-            <Button onClick={handleBack} className="mt-4">
-              Go Back
-            </Button>
-          </CardContent>
-        </Card>
+        {message && <p className="mt-4 text-gray-600">{message}</p>}
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Contextual Navigation */}
       <ContextualNav
         title="Tandai Kehadiran"
-        subtitle={classData.class_name}
+        subtitle={classData?.class_name || 'Memuat...'}
         backUrl="/student/dashboard"
-        status={{
-          label: step === 'success' ? 'Berhasil' : step === 'processing' ? 'Memproses' : 'Dalam Proses',
-          variant: step === 'success' ? 'default' : 'secondary'
-        }}
       />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Class Info Card */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl">{classData.class_name}</h2>
-                <p className="text-sm text-gray-600">{classData.class_code}</p>
-              </div>
-              <Badge variant="outline">{classData.schedule}</Badge>
-            </CardTitle>
-            <CardDescription className="flex items-center gap-2">
-              <User className="w-4 h-4" />
-              {classData.lecturer_name}
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        {classData && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl">{classData.class_name}</h2>
+                  <p className="text-sm text-gray-600">{classData.class_code}</p>
+                </div>
+                <Badge variant="outline">{classData.schedule}</Badge>
+              </CardTitle>
+              <CardDescription className="flex items-center gap-2">
+                <User className="w-4 h-4" />
+                {classData.lecturer_name}
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        )}
 
-        {/* Step Indicators */}
-        <div className="mb-8">
-          <div className="flex items-center justify-center space-x-8">
-            <div className={`flex items-center gap-2 ${step === 'location' || locationStatus === 'checking' ? 'text-blue-600' : locationStatus === 'valid' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${locationStatus === 'valid' ? 'bg-green-100' : locationStatus === 'checking' ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                {locationStatus === 'checking' ? (
-                  <LoadingSpinner size="sm" />
-                ) : locationStatus === 'valid' ? (
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                ) : (
-                  <MapPin className="w-5 h-5" />
-                )}
-              </div>
-              <span className="text-sm font-medium">Location</span>
-            </div>
-
-            <div className={`w-16 h-px ${locationStatus === 'valid' ? 'bg-green-200' : 'bg-gray-200'}`} />
-
-            <div className={`flex items-center gap-2 ${step === 'camera' ? 'text-blue-600' : step === 'processing' || step === 'success' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'success' ? 'bg-green-100' : step === 'camera' || step === 'processing' ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                {step === 'processing' ? (
-                  <LoadingSpinner size="sm" />
-                ) : step === 'success' ? (
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                ) : (
-                  <Camera className="w-5 h-5" />
-                )}
-              </div>
-              <span className="text-sm font-medium">Face Recognition</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
         <Card>
           <CardContent className="p-8">
-            {/* Location Step */}
             {step === 'location' && (
               <div className="text-center space-y-6">
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                  {locationStatus === 'checking' ? (
-                    <LoadingSpinner />
-                  ) : locationStatus === 'valid' ? (
-                    <CheckCircle className="w-8 h-8 text-green-600" />
-                  ) : (
-                    <MapPin className="w-8 h-8 text-blue-600" />
-                  )}
+                  {locationStatus === 'checking' ? <LoadingSpinner /> : locationStatus === 'valid' ? <CheckCircle className="w-8 h-8 text-green-600" /> : <MapPin className="w-8 h-8 text-blue-600" />}
                 </div>
-                
                 <div>
                   <h3 className="text-xl font-semibold mb-2">
-                    {locationStatus === 'checking' ? 'Verifying Location' : 
-                     locationStatus === 'valid' ? 'Location Verified' : 'Location Check Failed'}
+                    {locationStatus === 'checking' ? 'Memverifikasi Lokasi' : locationStatus === 'valid' ? 'Lokasi Terverifikasi' : 'Pengecekan Lokasi Gagal'}
                   </h3>
-                  <p className="text-gray-600">
-                    {message || error}
-                  </p>
+                  <p className="text-gray-600">{message || error}</p>
                 </div>
-
                 {locationStatus === 'valid' && (
-                  <Button onClick={startCamera} size="lg">
-                    Continue to Face Recognition
-                  </Button>
+                  <Button onClick={startCamera} size="lg">Lanjutkan ke Pindai Wajah</Button>
                 )}
-
                 {locationStatus === 'invalid' && (
                   <Button onClick={retryLocation} variant="outline" className="flex items-center gap-2">
                     <RefreshCw className="w-4 h-4" />
-                    Retry Location Check
+                    Coba Lagi
                   </Button>
                 )}
               </div>
             )}
 
-            {/* Camera Step */}
             {step === 'camera' && (
               <div className="space-y-6">
                 <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">Face Recognition</h3>
-                  <p className="text-gray-600">Position your face in the camera and take a photo</p>
+                  <h3 className="text-xl font-semibold mb-2">Pindai Wajah</h3>
+                  <p className="text-gray-600">Posisikan wajah Anda di dalam bingkai.</p>
                 </div>
-
                 <div className="relative max-w-md mx-auto">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    className="w-full h-64 object-cover rounded-lg bg-black"
-                  />
+                  <video ref={videoRef} autoPlay playsInline className="w-full h-64 object-cover rounded-lg bg-black" />
                   <div className="absolute inset-0 border-2 border-dashed border-white rounded-lg m-4 flex items-center justify-center">
                     <div className="w-32 h-40 border-2 border-white rounded-full opacity-50" />
                   </div>
                 </div>
-
                 <div className="text-center">
-                  <Button onClick={capturePhoto} size="lg" className="flex items-center gap-2">
-                    <Camera className="w-5 h-5" />
-                    Capture Photo
+                  <Button onClick={processAttendance} size="lg" className="flex items-center gap-2" disabled={isProcessing}>
+                    {isProcessing ? <LoadingSpinner size="sm" /> : <Camera className="w-5 h-5" />}
+                    Tandai Kehadiran
                   </Button>
                 </div>
-
-                <canvas ref={canvasRef} className="hidden" />
               </div>
             )}
-
-            {/* Processing Step */}
+            
             {step === 'processing' && (
               <div className="text-center space-y-6">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                  <LoadingSpinner />
-                </div>
-                
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto"><LoadingSpinner /></div>
                 <div>
                   <h3 className="text-xl font-semibold mb-2">Memproses Absensi</h3>
-                  <p className="text-gray-600">
-                    Memverifikasi identitas dan menandai kehadiran...
-                  </p>
-                  <div className="mt-4 max-w-sm mx-auto">
-                    <div className="flex items-center gap-2 text-sm text-blue-600">
-                      <Target className="w-4 h-4" />
-                      Menganalisis data wajah...
-                    </div>
-                  </div>
+                  <p className="text-gray-600">{message}</p>
                 </div>
               </div>
             )}
 
-            {/* Success Step */}
             {step === 'success' && (
               <div className="text-center space-y-6">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                  <CheckCircle className="w-8 h-8 text-green-600" />
-                </div>
-                
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto"><CheckCircle className="w-8 h-8 text-green-600" /></div>
                 <div>
                   <h3 className="text-xl font-semibold mb-2 text-green-800">Absensi Berhasil!</h3>
-                  <p className="text-gray-600">
-                    Kehadiran Anda telah berhasil dicatat untuk {classData.class_name}.
-                  </p>
+                  <p className="text-gray-600">{message}</p>
                 </div>
-
-                {/* Face Recognition Accuracy */}
                 {faceAccuracy !== null && (
-                  <div className="max-w-md mx-auto">
-                    <Card className="border-green-200 bg-green-50">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-green-800">Akurasi Face Recognition</span>
-                          <Badge variant={faceAccuracy >= 90 ? "default" : faceAccuracy >= 70 ? "secondary" : "destructive"}>
-                            {faceAccuracy.toFixed(1)}%
-                          </Badge>
-                        </div>
-                        <div className="w-full bg-green-200 rounded-full h-2 mb-2">
-                          <div 
-                            className="bg-green-600 h-2 rounded-full transition-all duration-500" 
-                            style={{ width: `${faceAccuracy}%` }}
-                          ></div>
-                        </div>
-                        <div className="text-xs text-green-700">
-                          {faceAccuracy >= 90 ? 'Sangat Akurat' : 
-                           faceAccuracy >= 70 ? 'Cukup Akurat' : 'Kurang Akurat'}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
+                   <Card className="border-green-200 bg-green-50 max-w-sm mx-auto">
+                     <CardContent className="p-4">
+                       <p className="text-sm font-medium text-green-800">Tingkat Kemiripan: <span className="font-bold">{faceAccuracy.toFixed(1)}%</span></p>
+                     </CardContent>
+                   </Card>
                 )}
-
-                {/* Recognition Details */}
-                {recognitionDetails && (
-                  <div className="max-w-md mx-auto">
-                    <Card className="border-blue-200 bg-blue-50">
-                      <CardContent className="p-4">
-                        <h4 className="text-sm font-medium text-blue-800 mb-2">Detail Verifikasi</h4>
-                        <div className="space-y-1 text-xs text-blue-700">
-                          <div className="flex justify-between">
-                            <span>Status:</span>
-                            <span className="font-medium">{recognitionDetails.success ? 'Terverifikasi' : 'Gagal'}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Confidence Score:</span>
-                            <span className="font-medium">{(recognitionDetails.confidence * 100).toFixed(1)}%</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Match Quality:</span>
-                            <span className="font-medium">
-                              {recognitionDetails.confidence >= 0.9 ? 'Excellent' : 
-                               recognitionDetails.confidence >= 0.7 ? 'Good' : 'Fair'}
-                            </span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                  <Clock className="w-4 h-4" />
-                  {new Date().toLocaleString()}
-                </div>
-
-                <Button onClick={handleDone} size="lg">
-                  Selesai
-                </Button>
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-500"><Clock className="w-4 h-4" />{new Date().toLocaleString('id-ID')}</div>
+                <Button onClick={handleDone} size="lg">Selesai</Button>
               </div>
             )}
-
-            {/* Error Alert */}
+            
             {error && step !== 'success' && (
               <Alert className="mt-6 border-red-200 bg-red-50">
                 <AlertCircle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-800">
-                  {error}
-                </AlertDescription>
+                <AlertDescription className="text-red-800">{error}</AlertDescription>
               </Alert>
             )}
           </CardContent>
