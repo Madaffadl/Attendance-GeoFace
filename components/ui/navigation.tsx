@@ -20,7 +20,8 @@ import {
   MapPin,
   ChevronRight,
   Search,
-  Bell
+  Bell,
+  User // Import the User icon here
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
