@@ -60,7 +60,7 @@ export function compareFaces(descriptor1: Float32Array, descriptor2: Float32Arra
 }
 
 // Validate if two faces match
-export function validateFaceMatch(descriptor1: Float32Array, descriptor2: Float32Array, threshold: number = 0.6): {
+export function validateFaceMatch(descriptor1: Float32Array, descriptor2: Float32Array, threshold: number = 0.11): {
   isMatch: boolean;
   distance: number;
   confidence: number;
