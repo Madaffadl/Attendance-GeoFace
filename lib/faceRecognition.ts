@@ -1,83 +1,164 @@
-// Simulate face recognition processing
-export interface FaceRecognitionResult {
-  success: boolean;
+import * as faceapi from 'face-api.js';
+
+let modelsLoaded = false;
+
+// Load face-api.js models
+export async function loadModels(): Promise<void> {
+  if (modelsLoaded) return;
+
+  try {
+    // Load models from public/models directory
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+      faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
+      faceapi.nets.faceRecognitionNet.loadFromUri('/models'),
+      faceapi.nets.faceExpressionNet.loadFromUri('/models'),
+      faceapi.nets.ageGenderNet.loadFromUri('/models'),
+      faceapi.nets.ssdMobilenetv1.loadFromUri('/models')
+    ]);
+    
+    modelsLoaded = true;
+    console.log('Face-api.js models loaded successfully');
+  } catch (error) {
+    console.error('Error loading face-api.js models:', error);
+    throw new Error('Failed to load face recognition models');
+  }
+}
+
+// Get face descriptor from image
+export async function getFaceDescriptor(imageData: string): Promise<Float32Array | null> {
+  try {
+    // Create image element from base64 data
+    const img = new Image();
+    img.src = imageData;
+    
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+
+    // Detect face and get descriptor
+    const detection = await faceapi
+      .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+
+    if (!detection) {
+      throw new Error('No face detected in image');
+    }
+
+    return detection.descriptor;
+  } catch (error) {
+    console.error('Error getting face descriptor:', error);
+    return null;
+  }
+}
+
+// Compare two face descriptors
+export function compareFaces(descriptor1: Float32Array, descriptor2: Float32Array): number {
+  return faceapi.euclideanDistance(descriptor1, descriptor2);
+}
+
+// Validate if two faces match
+export function validateFaceMatch(descriptor1: Float32Array, descriptor2: Float32Array, threshold: number = 0.6): {
+  isMatch: boolean;
+  distance: number;
   confidence: number;
-  matchedStudentId?: string;
-  message: string;
-}
-
-// Simulate PCA and Eigenface processing
-export function simulateFaceRecognition(
-  faceImageData: string,
-  studentId: string
-): Promise<FaceRecognitionResult> {
-  return new Promise((resolve) => {
-    // Simulate processing time
-    setTimeout(() => {
-      // Mock face recognition logic
-      const randomConfidence = Math.random();
-      
-      // Simulate successful recognition for valid students (80% success rate)
-      const isSuccessful = randomConfidence > 0.2;
-      
-      if (isSuccessful) {
-        // Generate more realistic confidence score
-        const baseConfidence = 0.75 + (randomConfidence * 0.25); // 75-100%
-        resolve({
-          success: true,
-          confidence: baseConfidence,
-          matchedStudentId: studentId,
-          message: `Pengenalan wajah berhasil. Identitas terverifikasi dengan akurasi ${(baseConfidence * 100).toFixed(1)}%.`
-        });
-      } else {
-        const lowConfidence = randomConfidence * 0.6; // 0-60% confidence
-        resolve({
-          success: false,
-          confidence: lowConfidence,
-          message: `Pengenalan wajah gagal (${(lowConfidence * 100).toFixed(1)}% akurasi). Silakan coba lagi dengan pencahayaan yang lebih baik.`
-        });
-      }
-    }, 2000); // 2 second delay to simulate processing
-  });
-}
-
-// Simulate face data extraction from image
-export function extractFaceVector(imageData: string): string {
-  // In a real implementation, this would use actual face detection
-  // and feature extraction algorithms like Eigenface or PCA
-  return `face_vector_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
-
-// Validate face image quality
-export function validateFaceImage(imageData: string): {
-  isValid: boolean;
-  message: string;
 } {
-  // Basic validation - in real implementation would check for:
-  // - Face detection
-  // - Image quality
-  // - Lighting conditions
-  // - Face size and orientation
-  
-  if (!imageData || imageData.length < 1000) {
-    return {
-      isValid: false,
-      message: 'Image quality too low. Please take a clearer photo.'
-    };
-  }
-
-  // Simulate face detection
-  const hasFace = Math.random() > 0.1; // 90% success rate for demo
-  
-  if (!hasFace) {
-    return {
-      isValid: false,
-      message: 'No face detected. Please ensure your face is clearly visible.'
-    };
-  }
+  const distance = compareFaces(descriptor1, descriptor2);
+  const isMatch = distance < threshold;
+  const confidence = Math.max(0, 1 - distance);
 
   return {
-    isValid: true,
-    message: 'Face image is valid for recognition.'
+    isMatch,
+    distance,
+    confidence
   };
+}
+
+// Process multiple face images for registration
+export async function processMultipleFaceImages(imageDataArray: string[]): Promise<{
+  success: boolean;
+  averageDescriptor?: Float32Array;
+  message: string;
+}> {
+  try {
+    const descriptors: Float32Array[] = [];
+
+    for (const imageData of imageDataArray) {
+      const descriptor = await getFaceDescriptor(imageData);
+      if (descriptor) {
+        descriptors.push(descriptor);
+      }
+    }
+
+    if (descriptors.length === 0) {
+      return {
+        success: false,
+        message: 'No faces detected in any of the provided images'
+      };
+    }
+
+    if (descriptors.length < imageDataArray.length * 0.6) {
+      return {
+        success: false,
+        message: 'Too few faces detected. Please ensure your face is clearly visible in all photos'
+      };
+    }
+
+    // Calculate average descriptor for better accuracy
+    const averageDescriptor = calculateAverageDescriptor(descriptors);
+
+    return {
+      success: true,
+      averageDescriptor,
+      message: `Successfully processed ${descriptors.length} face images`
+    };
+  } catch (error) {
+    console.error('Error processing face images:', error);
+    return {
+      success: false,
+      message: 'Error processing face images'
+    };
+  }
+}
+
+// Calculate average descriptor from multiple descriptors
+function calculateAverageDescriptor(descriptors: Float32Array[]): Float32Array {
+  const descriptorLength = descriptors[0].length;
+  const averageDescriptor = new Float32Array(descriptorLength);
+
+  for (let i = 0; i < descriptorLength; i++) {
+    let sum = 0;
+    for (const descriptor of descriptors) {
+      sum += descriptor[i];
+    }
+    averageDescriptor[i] = sum / descriptors.length;
+  }
+
+  return averageDescriptor;
+}
+
+// Convert Float32Array to string for storage
+export function descriptorToString(descriptor: Float32Array): string {
+  return Array.from(descriptor).join(',');
+}
+
+// Convert string back to Float32Array
+export function stringToDescriptor(descriptorString: string): Float32Array {
+  const values = descriptorString.split(',').map(Number);
+  return new Float32Array(values);
+}
+
+// Capture image from video element
+export function captureImageFromVideo(video: HTMLVideoElement): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not get canvas context');
+  
+  ctx.drawImage(video, 0, 0);
+  return canvas.toDataURL('image/jpeg', 0.8);
 }

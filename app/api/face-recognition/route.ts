@@ -5,9 +5,9 @@ import { mockStudents, mockFaceRecognition, mockActivityLogs } from '@/lib/mockD
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { student_id, class_id, face_images } = body;
+    const { student_id, class_id, face_descriptor, face_images } = body;
 
-    if (!student_id || !class_id || !face_images || !Array.isArray(face_images) || face_images.length === 0) {
+    if (!student_id || !class_id || !face_descriptor) {
       return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 });
     }
 
@@ -16,12 +16,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Student not found' }, { status: 404 });
     }
 
-    // Untuk sistem nyata, Anda akan memproses face_images di sini dengan face-api.js
-    // Namun, karena face-api.js berjalan di client, kita asumsikan client sudah mengirimkan deskriptor.
-    // Mari kita modifikasi flow: client akan mengirim deskriptor, bukan gambar.
-    // Untuk saat ini, kita akan simpan gambar pertama sebagai "representasi".
-    // DALAM IMPLEMENTASI NYATA: Anda akan menyimpan deskriptor wajah (Float32Array).
-    const faceVector = face_images[0]; // Simpan base64 dari gambar utama sebagai representasi
+    // Store the face descriptor (processed by face-api.js on client)
+    const faceVector = face_descriptor;
 
     const existingRegistration = mockFaceRecognition.find(fr => fr.student_id === student_id);
 
@@ -52,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Face registration completed successfully',
+      message: 'Registrasi wajah berhasil! Sekarang Anda dapat melakukan absensi dengan face recognition.',
     });
 
   } catch (error) {

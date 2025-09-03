@@ -16,6 +16,7 @@ import {
   User,
 } from 'lucide-react';
 import { Class } from '@/types';
+import { loadModels, processMultipleFaceImages, descriptorToString, captureImageFromVideo } from '@/lib/faceRecognition';
 
 interface User {
   id: string;
@@ -30,6 +31,7 @@ interface User {
 export default function RegisterFacePage() {
   const [user, setUser] = useState<User | null>(null);
   const [classData, setClassData] = useState<Class | null>(null);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState<'camera' | 'processing' | 'success'>('camera');
@@ -50,6 +52,16 @@ export default function RegisterFacePage() {
   const requiredImages = 5; // Butuh 5 foto untuk registrasi yang akurat
 
   useEffect(() => {
+    const initializeModels = async () => {
+      try {
+        await loadModels();
+        setModelsLoaded(true);
+      } catch (error) {
+        console.error('Error loading face recognition models:', error);
+        setError('Failed to load face recognition models. Please refresh the page.');
+      }
+    };
+
     // Check if user is logged in
     const userData = localStorage.getItem('user');
     if (!userData) {
@@ -64,6 +76,9 @@ export default function RegisterFacePage() {
     }
 
     setUser(parsedUser);
+
+    // Initialize face recognition models
+    initializeModels();
 
     const fetchClassData = async () => {
       try {
@@ -90,7 +105,7 @@ export default function RegisterFacePage() {
   }, [router, classId]);
 
   useEffect(() => {
-    if (step === 'camera') {
+    if (step === 'camera' && modelsLoaded) {
       startCamera();
     }
   }, [step]);
@@ -119,16 +134,8 @@ export default function RegisterFacePage() {
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
 
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
-    const context = canvas.getContext('2d');
-
-    if (context) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      context.drawImage(video, 0, 0);
-      
-      const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    try {
+      const imageData = captureImageFromVideo(videoRef.current);
       const newImages = [...faceImages, imageData];
       setFaceImages(newImages);
       setCurrentImageIndex(currentImageIndex + 1);
@@ -144,6 +151,8 @@ export default function RegisterFacePage() {
       } else {
         setMessage(`Foto ${newImages.length}/${requiredImages} berhasil diambil. Ambil foto dari sudut yang berbeda.`);
       }
+    } catch (error) {
+      setError('Failed to capture photo. Please try again.');
     }
   };
 
@@ -155,14 +164,22 @@ export default function RegisterFacePage() {
     setMessage('Memproses registrasi wajah...');
 
     try {
-      // Simulate processing each image
-      for (let i = 0; i < images.length; i++) {
-        setRegistrationProgress(((i + 1) / images.length) * 100);
-        setMessage(`Memproses foto ${i + 1}/${images.length}...`);
-        
-        // Simulate processing time
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      // Process face images using face-api.js
+      setMessage('Menganalisis wajah dari foto...');
+      setRegistrationProgress(25);
+      
+      const faceProcessingResult = await processMultipleFaceImages(images);
+      setRegistrationProgress(50);
+      
+      if (!faceProcessingResult.success || !faceProcessingResult.averageDescriptor) {
+        throw new Error(faceProcessingResult.message);
       }
+      
+      setMessage('Menyimpan data wajah...');
+      setRegistrationProgress(75);
+      
+      // Convert descriptor to string for storage
+      const descriptorString = descriptorToString(faceProcessingResult.averageDescriptor);
 
       const response = await fetch('/api/face-registration', {
         method: 'POST',
@@ -172,12 +189,15 @@ export default function RegisterFacePage() {
         body: JSON.stringify({
           student_id: user.id,
           class_id: classId,
-          face_images: images
+          face_descriptor: descriptorString,
+          face_images: images // Keep images for backup/verification
         }),
       });
 
       const data = await response.json();
 
+      setRegistrationProgress(100);
+      
       if (data.success) {
         setStep('success');
         setMessage('Registrasi wajah berhasil!');
@@ -222,7 +242,12 @@ export default function RegisterFacePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingSpinner size="lg" />
+        <div className="text-center">
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-gray-600">
+            {!modelsLoaded ? 'Loading face recognition models...' : 'Loading...'}
+          </p>
+        </div>
       </div>
     );
   }
@@ -289,7 +314,8 @@ export default function RegisterFacePage() {
                 <div className="text-center">
                   <h3 className="text-xl font-semibold mb-2">Registrasi Wajah untuk Kelas</h3>
                   <p className="text-gray-600">
-                    Ambil {requiredImages} foto wajah dari sudut yang berbeda untuk registrasi yang akurat
+                    Ambil {requiredImages} foto wajah dari sudut yang berbeda untuk registrasi yang akurat.
+                    Pastikan wajah terlihat jelas dan pencahayaan cukup.
                   </p>
                 </div>
 
@@ -337,6 +363,12 @@ export default function RegisterFacePage() {
                     <Camera className="w-5 h-5" />
                     Ambil Foto ({faceImages.length + 1}/{requiredImages})
                   </Button>
+                  
+                  {!modelsLoaded && (
+                    <p className="text-sm text-yellow-600 mt-2">
+                      Loading face recognition models...
+                    </p>
+                  )}
                 </div>
 
                 {message && (

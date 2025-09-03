@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Class, Student } from '@/types';
 import { getCurrentLocation, LocationCoordinates, validateLocation } from '@/lib/geolocation';
-import { loadModels, getFaceDescriptor, compareFaces } from '@/lib/faceRecognition';
+import { loadModels, getFaceDescriptor, validateFaceMatch, stringToDescriptor, captureImageFromVideo } from '@/lib/faceRecognition';
 import { mockStudents, mockClasses } from '@/lib/mockData';
 
 // Antarmuka untuk pengguna yang sedang login
@@ -142,8 +142,13 @@ export default function AttendancePage() {
   };
   
   const processAttendance = async () => {
-    if (!videoRef.current || !user || !studentData || !studentData.face_vector || !location) {
+    if (!videoRef.current || !user || !studentData || !location) {
       setError("Data tidak lengkap untuk memproses absensi. Pastikan Anda sudah registrasi wajah.");
+      return;
+    }
+    
+    if (!studentData.face_vector) {
+      setError("Anda belum melakukan registrasi wajah. Silakan registrasi wajah terlebih dahulu.");
       return;
     }
 
@@ -152,38 +157,42 @@ export default function AttendancePage() {
     setMessage('Menganalisis wajah Anda...');
     setError('');
 
-    const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0);
-    const imageData = canvas.toDataURL('image/jpeg');
-
-    streamRef.current?.getTracks().forEach(track => track.stop());
-
     try {
+      // Capture current image from video
+      const imageData = captureImageFromVideo(videoRef.current);
+
+      // Stop camera
+      streamRef.current?.getTracks().forEach(track => track.stop());
+
+      setMessage('Menganalisis wajah...');
       const currentDescriptor = await getFaceDescriptor(imageData);
       if (!currentDescriptor) {
         throw new Error("Wajah tidak terdeteksi. Pastikan wajah Anda terlihat jelas dan terang.");
       }
 
-      const registeredDescriptor = await getFaceDescriptor(studentData.face_vector);
-      if (!registeredDescriptor) {
-        throw new Error("Data wajah terdaftar tidak ditemukan. Silakan lakukan registrasi wajah ulang.");
+      setMessage('Membandingkan dengan data wajah terdaftar...');
+      
+      // Convert stored descriptor string back to Float32Array
+      let registeredDescriptor: Float32Array;
+      try {
+        registeredDescriptor = stringToDescriptor(studentData.face_vector);
+      } catch (error) {
+        throw new Error("Data wajah terdaftar tidak valid. Silakan lakukan registrasi wajah ulang.");
       }
 
-      const distance = compareFaces(currentDescriptor, registeredDescriptor);
-      const MATCH_THRESHOLD = 0.5;
-      const accuracy = Math.max(0, 100 - (distance / MATCH_THRESHOLD) * 100);
+      // Validate face match
+      const faceValidation = validateFaceMatch(currentDescriptor, registeredDescriptor, 0.6);
+      const accuracy = faceValidation.confidence * 100;
       setFaceAccuracy(accuracy);
 
       const recognitionResult = {
-        success: distance < MATCH_THRESHOLD,
-        message: distance < MATCH_THRESHOLD ? "Wajah terverifikasi" : "Wajah tidak cocok",
-        confidence: 1 - distance
+        success: faceValidation.isMatch,
+        message: faceValidation.isMatch ? "Wajah terverifikasi" : "Wajah tidak cocok",
+        confidence: faceValidation.confidence
       };
       
       if (!recognitionResult.success) {
-        throw new Error(`Wajah tidak cocok. Tingkat kemiripan: ${accuracy.toFixed(1)}%.`);
+        throw new Error(`Wajah tidak cocok dengan data terdaftar. Tingkat kemiripan: ${accuracy.toFixed(1)}%. Minimum yang diperlukan: 60%.`);
       }
 
       setMessage('Mengirim data absensi...');
@@ -205,10 +214,11 @@ export default function AttendancePage() {
       } else {
         throw new Error(data.message || 'Gagal menyimpan data absensi.');
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan saat memproses absensi';
+      setError(errorMessage);
       setStep('camera');
-      startCamera(); // Coba mulai ulang kamera jika gagal
+      setTimeout(() => startCamera(), 1000); // Restart camera after a delay
     } finally {
       setIsProcessing(false);
     }
@@ -234,8 +244,12 @@ export default function AttendancePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-        {message && <p className="mt-4 text-gray-600">{message}</p>}
+        <div className="text-center">
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-gray-600">
+            {!modelsLoaded ? 'Memuat model face recognition...' : 'Memuat...'}
+          </p>
+        </div>
       </div>
     );
   }
@@ -307,8 +321,14 @@ export default function AttendancePage() {
                 <div className="text-center">
                   <Button onClick={processAttendance} size="lg" className="flex items-center gap-2" disabled={isProcessing}>
                     {isProcessing ? <LoadingSpinner size="sm" /> : <Camera className="w-5 h-5" />}
-                    Tandai Kehadiran
+                    {isProcessing ? 'Memproses...' : 'Tandai Kehadiran'}
                   </Button>
+                  
+                  {!modelsLoaded && (
+                    <p className="text-sm text-yellow-600 mt-2">
+                      Memuat model face recognition...
+                    </p>
+                  )}
                 </div>
               </div>
             )}
