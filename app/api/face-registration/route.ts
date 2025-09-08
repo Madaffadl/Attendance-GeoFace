@@ -1,43 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mockStudents, mockFaceRecognition, mockActivityLogs } from '@/lib/mockData';
-// Kita tidak lagi menggunakan fungsi simulasi, jadi hapus importnya
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { student_id, class_id, face_descriptor, face_images } = body;
+    const { student_id, class_id, face_descriptor } = body;
 
     if (!student_id || !class_id || !face_descriptor) {
-      return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 });
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Data tidak lengkap' 
+      }, { status: 400 });
     }
 
     const student = mockStudents.find(s => s.id === student_id);
     if (!student) {
-      return NextResponse.json({ success: false, message: 'Student not found' }, { status: 404 });
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Mahasiswa tidak ditemukan' 
+      }, { status: 404 });
     }
 
-    // Store the face descriptor (processed by face-api.js on client)
-    const faceVector = face_descriptor;
+    // Update student's face vector
+    const studentIndex = mockStudents.findIndex(s => s.id === student_id);
+    if (studentIndex !== -1) {
+      mockStudents[studentIndex].face_vector = face_descriptor;
+    }
 
+    // Update or create face recognition record
     const existingRegistration = mockFaceRecognition.find(fr => fr.student_id === student_id);
-
     if (existingRegistration) {
-      existingRegistration.face_vector = faceVector; // Update dengan data baru
+      existingRegistration.face_vector = face_descriptor;
+      existingRegistration.status = 'Matched';
+      existingRegistration.confidence = 0.95;
     } else {
       mockFaceRecognition.push({
         id: (mockFaceRecognition.length + 1).toString(),
         student_id,
-        face_vector: faceVector,
+        face_vector: face_descriptor,
         status: 'Matched',
-        confidence: 0.98
+        confidence: 0.95
       });
     }
 
-    const studentIndex = mockStudents.findIndex(s => s.id === student_id);
-    if (studentIndex !== -1) {
-      mockStudents[studentIndex].face_vector = faceVector;
-    }
-
+    // Log the activity
     mockActivityLogs.push({
       id: Date.now().toString(),
       student_id,
@@ -48,11 +54,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Registrasi wajah berhasil! Sekarang Anda dapat melakukan absensi dengan face recognition.',
+      message: 'Registrasi wajah berhasil! Sekarang Anda dapat melakukan absensi dengan face recognition.'
     });
 
   } catch (error) {
     console.error('Face registration error:', error);
-    return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      success: false, 
+      message: 'Terjadi kesalahan server' 
+    }, { status: 500 });
   }
 }

@@ -21,15 +21,7 @@ import {
 } from 'lucide-react';
 import { Class, Student } from '@/types';
 import { getCurrentLocation, LocationCoordinates, validateLocation } from '@/lib/geolocation';
-import { 
-  loadModels, 
-  getFaceDescriptor, 
-  validateAttendance, 
-  stringToDescriptor, 
-  captureImageFromVideo,
-  processAttendance,
-  descriptorToString
-} from '@/lib/faceRecognition';
+import { loadModels, captureImageFromVideo, processAttendanceWithFace } from '@/lib/faceRecognition';
 import { mockStudents, mockClasses } from '@/lib/mockData';
 
 // Interface for logged in user
@@ -63,15 +55,6 @@ export default function AttendancePage() {
   const params = useParams();
   const classId = params.classId as string;
 
-  // Helper function to generate dummy descriptor
-  const generateDummyDescriptor = (): Float32Array => {
-    const descriptor = new Float32Array(128);
-    for (let i = 0; i < 128; i++) {
-      descriptor[i] = Math.random() * 0.1;
-    }
-    return descriptor;
-  };
-
   useEffect(() => {
     const initialize = async () => {
       const userData = localStorage.getItem('user');
@@ -82,15 +65,13 @@ export default function AttendancePage() {
       const parsedUser = JSON.parse(userData) as AuthUser;
       setUser(parsedUser);
 
-      setMessage("Memuat model AI, mohon tunggu...");
       try {
+        setMessage("Memuat model face recognition...");
         await loadModels();
         setModelsLoaded(true);
-        setMessage("");
       } catch (e) {
-        console.warn("AI models failed to load, continuing with fallback mode");
-        setModelsLoaded(true); // Set to true to continue with dummy processing
-        setMessage("");
+        console.error("Failed to load face recognition models:", e);
+        setError('Gagal memuat model face recognition. Silakan refresh halaman.');
       }
 
       const foundClass = mockClasses.find((cls: Class) => cls.id === classId);
@@ -116,52 +97,35 @@ export default function AttendancePage() {
 
   const checkLocation = async () => {
     if (!classData) return;
+    
     try {
       setLocationStatus('checking');
       setMessage('Memverifikasi lokasi Anda...');
       setError('');
       
-      let currentLocation: LocationCoordinates;
-      try {
-        currentLocation = await getCurrentLocation();
-        setLocation(currentLocation);
-      } catch (locationError) {
-        console.warn('Location access failed, using fallback location');
-        // Use fallback location for demo
-        currentLocation = {
-          latitude: classData.location.latitude,
-          longitude: classData.location.longitude
-        };
-        setLocation(currentLocation);
-      }
+      const currentLocation = await getCurrentLocation();
+      setLocation(currentLocation);
 
-      // Enhanced location validation with fallback
-      let locationValidation;
-      try {
-        locationValidation = validateLocation(currentLocation, classData.location, classData.location.radius);
-      } catch (validationError) {
-        console.warn('Location validation failed, using fallback');
-        locationValidation = {
-          isValid: true,
-          distance: 25,
-          message: 'Lokasi terverifikasi! (mode demo)'
-        };
-      }
+      const locationValidation = validateLocation(
+        currentLocation, 
+        classData.location, 
+        classData.location.radius
+      );
       
       setTimeout(() => {
-        setLocationStatus('valid'); // Always valid for demo
-        setMessage(`Lokasi terverifikasi! Anda berada ${locationValidation.distance}m dari kelas.`);
+        if (locationValidation.isValid) {
+          setLocationStatus('valid');
+          setMessage(`Lokasi terverifikasi! Anda berada ${locationValidation.distance}m dari kelas.`);
+        } else {
+          setLocationStatus('invalid');
+          setMessage(locationValidation.message);
+        }
       }, 1500);
       
     } catch (err) {
-      console.warn('Location check failed, but continuing with demo mode');
-      // Always proceed with demo location
-      setLocation({
-        latitude: classData.location.latitude,
-        longitude: classData.location.longitude
-      });
-      setLocationStatus('valid');
-      setMessage('Lokasi terverifikasi! (mode demo)');
+      console.error('Location check failed:', err);
+      setLocationStatus('invalid');
+      setError('Gagal mendapatkan lokasi. Pastikan GPS aktif dan izin lokasi diberikan.');
     }
   };
 
@@ -177,16 +141,23 @@ export default function AttendancePage() {
       setStep('camera');
       setError('');
     } catch (err) {
-      console.warn('Camera access failed, but continuing with demo mode');
-      setStep('camera');
-      setError('');
-      // Continue without camera for demo purposes
+      console.error('Camera access failed:', err);
+      setError('Gagal mengakses kamera. Pastikan izin kamera diberikan.');
     }
   };
   
-  const processAttendance = async () => {
-    if (!user || !location) {
+  const processAttendanceFlow = async () => {
+    if (!user || !location || !studentData) {
       setError("Data tidak lengkap untuk memproses absensi.");
+      return;
+    }
+
+    // Check if student has registered face
+    if (!studentData.face_vector || 
+        studentData.face_vector === 'vector_data_1' || 
+        studentData.face_vector === 'vector_data_2' || 
+        studentData.face_vector === 'vector_data_3') {
+      setError("Anda belum mendaftarkan wajah. Silakan daftarkan wajah terlebih dahulu.");
       return;
     }
 
@@ -196,117 +167,62 @@ export default function AttendancePage() {
     setError('');
 
     try {
-      // Capture current image from video (with fallback)
-      let imageData: string;
-      try {
-        if (videoRef.current && streamRef.current) {
-          imageData = captureImageFromVideo(videoRef.current);
-        } else {
-          // Generate placeholder image for demo
-          imageData = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD//2Q==';
-          console.log('Using placeholder image for demo');
-        }
-      } catch (captureError) {
-        console.warn('Failed to capture image, using placeholder');
-        imageData = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD//2Q==';
+      // Capture image from video
+      if (!videoRef.current) {
+        throw new Error('Video tidak tersedia');
       }
+
+      const imageData = captureImageFromVideo(videoRef.current);
 
       // Stop camera if running
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
 
-      setMessage('Menganalisis wajah...');
+      setMessage('Memproses pengenalan wajah...');
+
+      // Process face recognition
+      const faceResult = await processAttendanceWithFace(imageData, studentData.face_vector);
       
-      // ALWAYS SUCCESS: Enhanced face recognition with fallback
-      let currentDescriptor: Float32Array;
-      try {
-        const descriptor = await getFaceDescriptor(imageData);
-        currentDescriptor = descriptor || generateDummyDescriptor();
-      } catch (faceError) {
-        console.warn('Face detection failed, using dummy descriptor');
-        currentDescriptor = generateDummyDescriptor();
+      if (!faceResult.success) {
+        setError(faceResult.message);
+        setStep('camera');
+        setTimeout(() => startCamera(), 1000);
+        return;
       }
 
-      setMessage('Membandingkan dengan data wajah terdaftar...');
-      
-      // Convert stored descriptor string back to Float32Array with fallback
-      let registeredDescriptor: Float32Array;
-      try {
-        if (studentData?.face_vector && 
-            studentData.face_vector !== 'vector_data_1' && 
-            studentData.face_vector !== 'vector_data_2' && 
-            studentData.face_vector !== 'vector_data_3') {
-          registeredDescriptor = stringToDescriptor(studentData.face_vector);
-        } else {
-          // Create a compatible dummy descriptor for mock data
-          registeredDescriptor = generateDummyDescriptor();
-          console.log('Using dummy registered descriptor for mock data compatibility');
-        }
-      } catch (parseError) {
-        console.warn('Failed to parse stored descriptor, using dummy');
-        registeredDescriptor = generateDummyDescriptor();
-      }
-
-      // ALWAYS SUCCESS: Use validateAttendance which always returns success
-      const faceValidation = validateAttendance(currentDescriptor, registeredDescriptor);
-      const accuracy = Math.min(faceValidation.confidence * 100, 98.5); // Realistic accuracy
-      setFaceAccuracy(accuracy);
-
-      // Create recognition result - ALWAYS SUCCESS
-      const recognitionResult = {
-        success: true, // Always true
-        message: "Wajah terverifikasi",
-        confidence: faceValidation.confidence
-      };
+      setFaceAccuracy(faceResult.confidence * 100);
 
       setMessage('Mengirim data absensi...');
       
-      // Send attendance data
-      try {
-        const response = await fetch('/api/attendance', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            student_id: user.id,
-            class_id: classId,
-            location,
-            recognitionResult
-          }),
-        });
+      const response = await fetch('/api/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: user.id,
+          class_id: classId,
+          location,
+          face_recognition_result: faceResult
+        }),
+      });
 
-        const data = await response.json();
-        
-        if (data.success) {
-          setStep('success');
-          setMessage('Absensi berhasil dicatat!');
-        } else {
-          // Override API failure for demo
-          console.warn('API returned failure, but overriding for demo mode');
-          setStep('success');
-          setMessage('Absensi berhasil dicatat!');
-        }
-      } catch (apiError) {
-        console.warn('API call failed, but proceeding with demo success');
+      const data = await response.json();
+      
+      if (data.success) {
         setStep('success');
-        setMessage('Absensi berhasil dicatat! (mode offline)');
+        setMessage(data.message);
+      } else {
+        setError(data.message);
+        setStep('camera');
+        setTimeout(() => startCamera(), 1000);
       }
       
     } catch (err) {
       console.error('Attendance processing error:', err);
-      
-      // ALWAYS SUCCESS: Override any errors for demo
-      setStep('success');
-      setMessage('Absensi berhasil dicatat!');
-      setFaceAccuracy(87.3); // Set realistic accuracy
-      
-      // Uncomment below if you want to show actual errors
-      /*
       const errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan saat memproses absensi';
       setError(errorMessage);
       setStep('camera');
       setTimeout(() => startCamera(), 1000);
-      */
     } finally {
       setIsProcessing(false);
     }
@@ -436,7 +352,7 @@ export default function AttendancePage() {
                 </div>
                 <div className="text-center">
                   <Button 
-                    onClick={processAttendance} 
+                    onClick={processAttendanceFlow} 
                     size="lg" 
                     className="flex items-center gap-2" 
                     disabled={isProcessing}
@@ -448,18 +364,6 @@ export default function AttendancePage() {
                     )}
                     {isProcessing ? 'Memproses...' : 'Tandai Kehadiran'}
                   </Button>
-                  
-                  {!modelsLoaded && (
-                    <p className="text-sm text-yellow-600 mt-2">
-                      Mode fallback - Absensi akan tetap berhasil
-                    </p>
-                  )}
-                  
-                  {!streamRef.current && (
-                    <p className="text-sm text-blue-600 mt-2">
-                      Mode demo aktif - Absensi akan berhasil tanpa kamera
-                    </p>
-                  )}
                 </div>
               </div>
             )}

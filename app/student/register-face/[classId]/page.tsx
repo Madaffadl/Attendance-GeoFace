@@ -164,7 +164,6 @@ export default function RegisterFacePage() {
     setMessage('Memproses registrasi wajah...');
 
     try {
-      // Process face images using face-api.js
       setMessage('Menganalisis wajah dari foto...');
       setRegistrationProgress(25);
       
@@ -172,13 +171,17 @@ export default function RegisterFacePage() {
       setRegistrationProgress(50);
       
       if (!faceProcessingResult.success || !faceProcessingResult.averageDescriptor) {
-        throw new Error(faceProcessingResult.message);
+        setError(faceProcessingResult.message);
+        setStep('camera');
+        setFaceImages([]);
+        setCurrentImageIndex(0);
+        setRegistrationProgress(0);
+        return;
       }
       
       setMessage('Menyimpan data wajah...');
       setRegistrationProgress(75);
       
-      // Convert descriptor to string for storage
       const descriptorString = descriptorToString(faceProcessingResult.averageDescriptor);
 
       const response = await fetch('/api/face-registration', {
@@ -189,8 +192,7 @@ export default function RegisterFacePage() {
         body: JSON.stringify({
           student_id: user.id,
           class_id: classId,
-          face_descriptor: descriptorString,
-          face_images: images // Keep images for backup/verification
+          face_descriptor: descriptorString
         }),
       });
 
@@ -202,16 +204,19 @@ export default function RegisterFacePage() {
         setStep('success');
         setMessage('Registrasi wajah berhasil!');
       } else {
-        setError(data.message || 'Failed to register face');
+        setError(data.message || 'Gagal mendaftarkan wajah');
         setStep('camera');
         setFaceImages([]);
         setCurrentImageIndex(0);
+        setRegistrationProgress(0);
       }
     } catch (error) {
-      setError('Network error. Please try again.');
+      console.error('Registration error:', error);
+      setError('Terjadi kesalahan jaringan. Silakan coba lagi.');
       setStep('camera');
       setFaceImages([]);
       setCurrentImageIndex(0);
+      setRegistrationProgress(0);
     } finally {
       setIsProcessing(false);
     }
@@ -429,7 +434,7 @@ export default function RegisterFacePage() {
                   <ul className="text-sm text-green-700 space-y-1">
                     <li>✓ {requiredImages} foto wajah dari berbagai sudut</li>
                     <li>✓ Data biometrik wajah</li>
-                    <li>✓ Profil face recognition untuk kelas ini</li>
+                    <li>✓ Profil face recognition tersimpan</li>
                   </ul>
                 </div>
 
@@ -445,19 +450,21 @@ export default function RegisterFacePage() {
                 <AlertCircle className="h-4 w-4 text-red-600" />
                 <AlertDescription className="text-red-800">
                   {error}
-                  {step === 'camera' && (
-                    <Button 
-                      onClick={retryRegistration} 
-                      variant="outline" 
-                      size="sm" 
-                      className="ml-4 flex items-center gap-2"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                      Coba Lagi
-                    </Button>
-                  )}
                 </AlertDescription>
               </Alert>
+            )}
+            
+            {error && step === 'camera' && (
+              <div className="mt-4 text-center">
+                <Button 
+                  onClick={retryRegistration} 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Coba Lagi
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
