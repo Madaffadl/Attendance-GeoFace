@@ -9,7 +9,7 @@ export const mockStudents: Student[] = [
     email: 'john.doe@university.edu',
     program_study: 'Computer Science',
     photo: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150',
-    face_vector: 'vector_data_1'
+    face_vector: undefined
   },
   {
     id: '2',
@@ -18,7 +18,7 @@ export const mockStudents: Student[] = [
     email: 'jane.smith@university.edu',
     program_study: 'Information Systems',
     photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150',
-    face_vector: 'vector_data_2'
+    face_vector: undefined
   },
   {
     id: '3',
@@ -27,7 +27,7 @@ export const mockStudents: Student[] = [
     email: 'mike.johnson@university.edu',
     program_study: 'Computer Science',
     photo: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150',
-    face_vector: 'vector_data_3'
+    face_vector: undefined
   }
 ];
 

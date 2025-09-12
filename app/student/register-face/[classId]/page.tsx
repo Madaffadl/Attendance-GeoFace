@@ -105,13 +105,19 @@ export default function RegisterFacePage() {
   }, [router, classId]);
 
   useEffect(() => {
-    if (step === 'camera' && modelsLoaded) {
+    if (step === 'camera' && modelsLoaded && !streamRef.current) {
       startCamera();
     }
-  }, [step]);
+  }, [step, modelsLoaded]);
 
   const startCamera = async () => {
     try {
+      // Stop any existing stream first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'user',
@@ -122,12 +128,14 @@ export default function RegisterFacePage() {
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        await videoRef.current.play();
         streamRef.current = stream;
       }
       
       setError('');
     } catch (error) {
       setError('Failed to access camera. Please allow camera permissions.');
+      console.error('Camera access error:', error);
     }
   };
 

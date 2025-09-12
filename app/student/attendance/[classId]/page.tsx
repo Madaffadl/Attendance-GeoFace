@@ -131,11 +131,18 @@ export default function AttendancePage() {
 
   const startCamera = async () => {
     try {
+      // Stop any existing stream first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
       });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        await videoRef.current.play();
         streamRef.current = stream;
       }
       setStep('camera');
@@ -154,9 +161,8 @@ export default function AttendancePage() {
 
     // Check if student has registered face
     if (!studentData.face_vector || 
-        studentData.face_vector === 'vector_data_1' || 
-        studentData.face_vector === 'vector_data_2' || 
-        studentData.face_vector === 'vector_data_3') {
+        studentData.face_vector.includes('vector_data_') ||
+        studentData.face_vector.length < 50) {
       setError("Anda belum mendaftarkan wajah. Silakan daftarkan wajah terlebih dahulu.");
       return;
     }
@@ -339,16 +345,6 @@ export default function AttendancePage() {
                   <div className="absolute inset-0 border-2 border-dashed border-white rounded-lg m-4 flex items-center justify-center">
                     <div className="w-32 h-40 border-2 border-white rounded-full opacity-50" />
                   </div>
-                  {/* Show demo indicator if no camera */}
-                  {!streamRef.current && (
-                    <div className="absolute inset-0 bg-gray-800 bg-opacity-75 rounded-lg flex items-center justify-center">
-                      <div className="text-center text-white">
-                        <Camera className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">Mode Demo</p>
-                        <p className="text-xs opacity-75">Kamera tidak tersedia</p>
-                      </div>
-                    </div>
-                  )}
                 </div>
                 <div className="text-center">
                   <Button 

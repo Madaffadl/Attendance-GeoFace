@@ -9,6 +9,7 @@ export async function loadModels(): Promise<void> {
   try {
     const MODEL_URL = '/models';
     
+    console.log('Loading face-api.js models...');
     await Promise.all([
       faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
       faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
@@ -20,6 +21,7 @@ export async function loadModels(): Promise<void> {
     console.log('Face-api.js models loaded successfully');
   } catch (error) {
     console.error('Error loading face-api.js models:', error);
+    modelsLoaded = false;
     throw new Error('Failed to load face recognition models');
   }
 }
