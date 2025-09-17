@@ -209,6 +209,13 @@ export default function RegisterFacePage() {
       setRegistrationProgress(100);
       
       if (data.success) {
+        // Update user data in localStorage with new face vector
+        if (user && data.student) {
+          const updatedUser = { ...user };
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          console.log('Face registration successful, user data updated');
+        }
+        
         setStep('success');
         setMessage('Registrasi wajah berhasil!');
       } else {
@@ -249,6 +256,7 @@ export default function RegisterFacePage() {
   };
 
   const handleDone = () => {
+    console.log('Registration completed, navigating to dashboard');
     router.push('/student/dashboard');
   };
 

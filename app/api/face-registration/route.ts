@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
     const studentIndex = mockStudents.findIndex(s => s.id === student_id);
     if (studentIndex !== -1) {
       mockStudents[studentIndex].face_vector = face_descriptor;
+      console.log(`Face vector saved for student ${student_id}:`, face_descriptor.substring(0, 50) + '...');
     }
 
     // Update or create face recognition record
@@ -54,7 +55,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Registrasi wajah berhasil! Sekarang Anda dapat melakukan absensi dengan face recognition.'
+      message: 'Registrasi wajah berhasil! Sekarang Anda dapat melakukan absensi dengan face recognition.',
+      student: mockStudents[studentIndex] // Return updated student data
     });
 
   } catch (error) {

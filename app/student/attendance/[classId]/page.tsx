@@ -159,11 +159,16 @@ export default function AttendancePage() {
       return;
     }
 
+    console.log('Processing attendance for student:', studentData.id);
+    console.log('Student face vector exists:', !!studentData.face_vector);
+    console.log('Face vector length:', studentData.face_vector?.length || 0);
     // Check if student has registered face
-    if (!studentData.face_vector || 
-        studentData.face_vector.includes('vector_data_') ||
-        studentData.face_vector.length < 50) {
+    if (!studentData.face_vector || studentData.face_vector.length < 50) {
+      console.log('Face not registered, redirecting to registration');
       setError("Anda belum mendaftarkan wajah. Silakan daftarkan wajah terlebih dahulu.");
+      setTimeout(() => {
+        router.push(`/student/register-face/${classId}`);
+      }, 2000);
       return;
     }
 
