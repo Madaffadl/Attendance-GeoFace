@@ -291,18 +291,18 @@ export default function RegisterFacePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white shadow-lg border-b">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16">
-            <Button variant="ghost" onClick={handleBack} className="flex items-center gap-2 mr-4">
+          <div className="flex items-center h-20">
+            <Button variant="ghost" onClick={handleBack} className="flex items-center gap-2 mr-6 text-base">
               <ArrowLeft className="w-4 h-4" />
               Back
             </Button>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">Registrasi Wajah</h1>
-              <p className="text-sm text-gray-600">{classData.class_name}</p>
+              <h1 className="text-2xl font-bold text-gray-900">Registrasi Wajah</h1>
+              <p className="text-base text-gray-600">{classData.class_name}</p>
             </div>
           </div>
         </div>
@@ -310,68 +310,68 @@ export default function RegisterFacePage() {
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Class Info Card */}
-        <Card className="mb-8">
-          <CardHeader>
+        <Card className="mb-10 shadow-lg border-0 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardHeader className="pb-6">
             <CardTitle className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl">{classData.class_name}</h2>
-                <p className="text-sm text-gray-600">{classData.class_code}</p>
+                <h2 className="text-2xl font-bold">{classData.class_name}</h2>
+                <p className="text-base text-gray-600 mt-1">{classData.class_code}</p>
               </div>
-              <Badge variant="outline">{classData.schedule}</Badge>
+              <Badge variant="outline" className="px-4 py-2 text-base">{classData.schedule}</Badge>
             </CardTitle>
-            <CardDescription className="flex items-center gap-2">
-              <User className="w-4 h-4" />
+            <CardDescription className="flex items-center gap-3 text-base mt-3">
+              <User className="w-5 h-5" />
               {classData.lecturer_name}
             </CardDescription>
           </CardHeader>
         </Card>
 
         {/* Main Content */}
-        <Card>
-          <CardContent className="p-8">
+        <Card className="shadow-xl border-0">
+          <CardContent className="p-10">
             {/* Camera Step */}
             {step === 'camera' && (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">Registrasi Wajah untuk Kelas</h3>
-                  <p className="text-gray-600">
+                  <h3 className="text-2xl font-bold mb-4">Registrasi Wajah untuk Kelas</h3>
+                  <p className="text-gray-600 text-lg leading-relaxed">
                     Ambil {requiredImages} foto wajah dari sudut yang berbeda untuk registrasi yang akurat.
                     Pastikan wajah terlihat jelas dan pencahayaan cukup.
                   </p>
                 </div>
 
                 {/* Progress */}
-                <div className="max-w-md mx-auto">
-                  <div className="flex justify-between text-sm text-gray-600 mb-2">
+                <div className="max-w-lg mx-auto">
+                  <div className="flex justify-between text-base text-gray-600 mb-3">
                     <span>Progress</span>
                     <span>{faceImages.length}/{requiredImages} foto</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-gray-200 rounded-full h-3">
                     <div
-                      className="bg-blue-600 h-2 rounded-full"
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 h-3 rounded-full transition-all duration-300"
                       style={{ width: `${(faceImages.length / requiredImages) * 100}%` }}
                     />
                   </div>
                 </div>
 
-                <div className="relative max-w-md mx-auto">
+                <div className="relative max-w-lg mx-auto">
                   <video
                     ref={videoRef}
                     autoPlay
                     playsInline
-                    className="w-full h-64 object-cover rounded-lg bg-black"
+                    className="w-full h-80 object-cover rounded-xl bg-black shadow-lg"
                   />
-                  <div className="absolute inset-0 border-2 border-dashed border-white rounded-lg m-4 flex items-center justify-center">
-                    <div className="w-32 h-40 border-2 border-white rounded-full opacity-50" />
+                  <div className="absolute inset-0 border-2 border-dashed border-white rounded-xl m-6 flex items-center justify-center">
+                    <div className="w-40 h-48 border-3 border-white rounded-full opacity-60" />
                   </div>
                 </div>
 
                 {/* Instructions */}
-                <div className="text-center text-sm text-gray-600 max-w-md mx-auto">
-                  <p className="mb-2">
+                <div className="text-center text-base text-gray-600 max-w-lg mx-auto">
+                  <p className="mb-3 font-semibold">
                     <strong>Petunjuk:</strong>
                   </p>
-                  <ul className="text-left space-y-1">
+                  <ul className="text-left space-y-2 bg-gray-50 p-4 rounded-lg">
                     <li>• Pastikan wajah terlihat jelas</li>
                     <li>• Ambil foto dari sudut yang berbeda</li>
                     <li>• Hindari cahaya yang terlalu terang/gelap</li>
@@ -380,20 +380,20 @@ export default function RegisterFacePage() {
                 </div>
 
                 <div className="text-center">
-                  <Button onClick={capturePhoto} size="lg" className="flex items-center gap-2">
-                    <Camera className="w-5 h-5" />
+                  <Button onClick={capturePhoto} size="lg" className="flex items-center gap-3 px-8 py-4 text-lg font-semibold shadow-lg">
+                    <Camera className="w-6 h-6" />
                     Ambil Foto ({faceImages.length + 1}/{requiredImages})
                   </Button>
                   
                   {!modelsLoaded && (
-                    <p className="text-sm text-yellow-600 mt-2">
+                    <p className="text-base text-yellow-600 mt-4">
                       Loading face recognition models...
                     </p>
                   )}
                 </div>
 
                 {message && (
-                  <Alert className="max-w-md mx-auto">
+                  <Alert className="max-w-lg mx-auto bg-blue-50 border-blue-200">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
                       {message}
@@ -407,24 +407,24 @@ export default function RegisterFacePage() {
 
             {/* Processing Step */}
             {step === 'processing' && (
-              <div className="text-center space-y-6">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+              <div className="text-center space-y-8">
+                <div className="w-20 h-20 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto shadow-lg">
                   <LoadingSpinner />
                 </div>
                 
                 <div>
-                  <h3 className="text-xl font-semibold mb-2">Memproses Registrasi Wajah</h3>
-                  <p className="text-gray-600 mb-4">
+                  <h3 className="text-2xl font-bold mb-4">Memproses Registrasi Wajah</h3>
+                  <p className="text-gray-600 mb-6 text-lg">
                     {message}
                   </p>
-                  <div className="max-w-md mx-auto">
-                    <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className="max-w-lg mx-auto">
+                    <div className="w-full bg-gray-200 rounded-full h-4">
                       <div
-                        className="bg-blue-600 h-3 rounded-full"
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 h-4 rounded-full transition-all duration-300"
                         style={{ width: `${registrationProgress}%` }}
                       />
                     </div>
-                    <p className="text-sm text-gray-500 mt-2">{Math.round(registrationProgress)}% selesai</p>
+                    <p className="text-base text-gray-500 mt-3">{Math.round(registrationProgress)}% selesai</p>
                   </div>
                 </div>
               </div>
@@ -432,29 +432,29 @@ export default function RegisterFacePage() {
 
             {/* Success Step */}
             {step === 'success' && (
-              <div className="text-center space-y-6">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                  <CheckCircle className="w-8 h-8 text-green-600" />
+              <div className="text-center space-y-8">
+                <div className="w-20 h-20 bg-gradient-to-r from-green-100 to-green-200 rounded-full flex items-center justify-center mx-auto shadow-lg">
+                  <CheckCircle className="w-10 h-10 text-green-600" />
                 </div>
                 
                 <div>
-                  <h3 className="text-xl font-semibold mb-2 text-green-800">Registrasi Berhasil!</h3>
-                  <p className="text-gray-600">
+                  <h3 className="text-2xl font-bold mb-4 text-green-800">Registrasi Berhasil!</h3>
+                  <p className="text-gray-600 text-lg leading-relaxed">
                     Wajah Anda telah berhasil didaftarkan untuk kelas {classData.class_name}.
                     Sekarang Anda dapat melakukan absensi menggunakan face recognition.
                   </p>
                 </div>
 
-                <div className="bg-green-50 p-4 rounded-lg max-w-md mx-auto">
-                  <h4 className="font-medium text-green-800 mb-2">Yang telah didaftarkan:</h4>
-                  <ul className="text-sm text-green-700 space-y-1">
+                <div className="bg-green-50 p-6 rounded-xl max-w-lg mx-auto border border-green-200">
+                  <h4 className="font-semibold text-green-800 mb-3 text-lg">Yang telah didaftarkan:</h4>
+                  <ul className="text-base text-green-700 space-y-2">
                     <li>✓ {requiredImages} foto wajah dari berbagai sudut</li>
                     <li>✓ Data biometrik wajah</li>
                     <li>✓ Profil face recognition tersimpan</li>
                   </ul>
                 </div>
 
-                <Button onClick={handleDone} size="lg">
+                <Button onClick={handleDone} size="lg" className="px-8 py-4 text-lg font-semibold shadow-lg">
                   Selesai
                 </Button>
               </div>
@@ -462,7 +462,7 @@ export default function RegisterFacePage() {
 
             {/* Error Alert */}
             {error && step !== 'success' && (
-              <Alert className="mt-6 border-red-200 bg-red-50">
+              <Alert className="mt-8 border-red-200 bg-red-50">
                 <AlertCircle className="h-4 w-4 text-red-600" />
                 <AlertDescription className="text-red-800">
                   {error}
@@ -471,11 +471,11 @@ export default function RegisterFacePage() {
             )}
             
             {error && step === 'camera' && (
-              <div className="mt-4 text-center">
+              <div className="mt-6 text-center">
                 <Button 
                   onClick={retryRegistration} 
                   variant="outline" 
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-3 px-6 py-3 text-base font-semibold"
                 >
                   <RefreshCw className="w-4 h-4" />
                   Coba Lagi

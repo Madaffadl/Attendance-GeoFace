@@ -90,62 +90,63 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
-            <GraduationCap className="w-8 h-8 text-white" />
+        <div className="text-center mb-10">
+          <div className="mx-auto w-20 h-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mb-6 shadow-lg">
+            <GraduationCap className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Student Attendance</h1>
-          <p className="text-gray-600 mt-2">Face Recognition & Geolocation System</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">Student Attendance</h1>
+          <p className="text-gray-600 text-lg">Face Recognition & Geolocation System</p>
         </div>
 
-        <Card>
+        <Card className="shadow-xl border-0">
           <CardHeader>
-            <CardTitle>Login to Your Account</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-2xl text-center">Login to Your Account</CardTitle>
+            <CardDescription className="text-center text-lg">
               Choose your account type and enter your credentials
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="student" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="student" className="flex items-center gap-2">
+          <CardContent className="p-8">
+            <Tabs defaultValue="student" className="w-full space-y-6">
+              <TabsList className="grid w-full grid-cols-2 h-12">
+                <TabsTrigger value="student" className="flex items-center gap-2 text-base">
                   <GraduationCap className="w-4 h-4" />
                   Student
                 </TabsTrigger>
-                <TabsTrigger value="lecturer" className="flex items-center gap-2">
+                <TabsTrigger value="lecturer" className="flex items-center gap-2 text-base">
                   <Users className="w-4 h-4" />
                   Lecturer
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="student" className="space-y-4">
-                <form onSubmit={handleStudentLogin} className="space-y-4">
+              <TabsContent value="student" className="space-y-6">
+                <form onSubmit={handleStudentLogin} className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="nim">NIM (Student ID)</Label>
+                    <Label htmlFor="nim" className="text-base font-medium">NIM (Student ID)</Label>
                     <Input
                       id="nim"
                       name="nim"
                       type="text"
                       placeholder="Enter your NIM"
+                      className="h-12 text-base"
                       required
                       disabled={isLoading}
                     />
                   </div>
 
                   {error && (
-                    <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+                    <div className="text-red-600 text-sm bg-red-50 p-4 rounded-lg border border-red-200">
                       {error}
                     </div>
                   )}
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full h-12 text-base font-semibold" disabled={isLoading}>
                     {isLoading ? <LoadingSpinner size="sm" /> : 'Login as Student'}
                   </Button>
                 </form>
 
-                <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-md">
+                <div className="text-sm text-gray-600 bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <strong>Demo NIMs:</strong><br />
                   2021001 (John Doe)<br />
                   2021002 (Jane Smith)<br />
@@ -153,44 +154,46 @@ export default function LoginPage() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="lecturer" className="space-y-4">
-                <form onSubmit={handleLecturerLogin} className="space-y-4">
+              <TabsContent value="lecturer" className="space-y-6">
+                <form onSubmit={handleLecturerLogin} className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="code">Lecturer Code</Label>
+                    <Label htmlFor="code" className="text-base font-medium">Lecturer Code</Label>
                     <Input
                       id="code"
                       name="code"
                       type="text"
                       placeholder="Enter your lecturer code"
+                      className="h-12 text-base"
                       required
                       disabled={isLoading}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password" className="text-base font-medium">Password</Label>
                     <Input
                       id="password"
                       name="password"
                       type="password"
                       placeholder="Enter your password"
+                      className="h-12 text-base"
                       required
                       disabled={isLoading}
                     />
                   </div>
 
                   {error && (
-                    <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+                    <div className="text-red-600 text-sm bg-red-50 p-4 rounded-lg border border-red-200">
                       {error}
                     </div>
                   )}
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full h-12 text-base font-semibold" disabled={isLoading}>
                     {isLoading ? <LoadingSpinner size="sm" /> : 'Login as Lecturer'}
                   </Button>
                 </form>
 
-                <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-md">
+                <div className="text-sm text-gray-600 bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <strong>Demo Credentials:</strong><br />
                   Code: LEC001, Password: password123<br />
                   Code: LEC002, Password: password456

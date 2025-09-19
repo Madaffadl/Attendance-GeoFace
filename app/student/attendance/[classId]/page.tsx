@@ -270,7 +270,7 @@ export default function AttendancePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       <ContextualNav
         title="Tandai Kehadiran"
         subtitle={classData?.class_name || 'Memuat...'}
@@ -279,38 +279,38 @@ export default function AttendancePage() {
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {classData && (
-          <Card className="mb-8">
-            <CardHeader>
+          <Card className="mb-10 shadow-lg border-0 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <CardHeader className="pb-6">
               <CardTitle className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl">{classData.class_name}</h2>
-                  <p className="text-sm text-gray-600">{classData.class_code}</p>
+                  <h2 className="text-2xl font-bold">{classData.class_name}</h2>
+                  <p className="text-base text-gray-600 mt-1">{classData.class_code}</p>
                 </div>
-                <Badge variant="outline">{classData.schedule}</Badge>
+                <Badge variant="outline" className="px-4 py-2 text-base">{classData.schedule}</Badge>
               </CardTitle>
-              <CardDescription className="flex items-center gap-2">
-                <User className="w-4 h-4" />
+              <CardDescription className="flex items-center gap-3 text-base mt-3">
+                <User className="w-5 h-5" />
                 {classData.lecturer_name}
               </CardDescription>
             </CardHeader>
           </Card>
         )}
 
-        <Card>
-          <CardContent className="p-8">
+        <Card className="shadow-xl border-0">
+          <CardContent className="p-10">
             {step === 'location' && (
-              <div className="text-center space-y-6">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+              <div className="text-center space-y-8">
+                <div className="w-20 h-20 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto shadow-lg">
                   {locationStatus === 'checking' ? (
                     <LoadingSpinner />
                   ) : locationStatus === 'valid' ? (
-                    <CheckCircle className="w-8 h-8 text-green-600" />
+                    <CheckCircle className="w-10 h-10 text-green-600" />
                   ) : (
-                    <MapPin className="w-8 h-8 text-blue-600" />
+                    <MapPin className="w-10 h-10 text-blue-600" />
                   )}
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold mb-2">
+                  <h3 className="text-2xl font-bold mb-4">
                     {locationStatus === 'checking' 
                       ? 'Memverifikasi Lokasi' 
                       : locationStatus === 'valid' 
@@ -318,15 +318,15 @@ export default function AttendancePage() {
                         : 'Pengecekan Lokasi Gagal'
                     }
                   </h3>
-                  <p className="text-gray-600">{message || error}</p>
+                  <p className="text-gray-600 text-lg">{message || error}</p>
                 </div>
                 {locationStatus === 'valid' && (
-                  <Button onClick={startCamera} size="lg">
+                  <Button onClick={startCamera} size="lg" className="px-8 py-4 text-lg font-semibold shadow-lg">
                     Lanjutkan ke Pindai Wajah
                   </Button>
                 )}
                 {locationStatus === 'invalid' && (
-                  <Button onClick={retryLocation} variant="outline" className="flex items-center gap-2">
+                  <Button onClick={retryLocation} variant="outline" className="flex items-center gap-3 px-6 py-3 text-base font-semibold">
                     <RefreshCw className="w-4 h-4" />
                     Coba Lagi
                   </Button>
@@ -335,33 +335,33 @@ export default function AttendancePage() {
             )}
 
             {step === 'camera' && (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">Pindai Wajah</h3>
-                  <p className="text-gray-600">Posisikan wajah Anda di dalam bingkai.</p>
+                  <h3 className="text-2xl font-bold mb-4">Pindai Wajah</h3>
+                  <p className="text-gray-600 text-lg">Posisikan wajah Anda di dalam bingkai.</p>
                 </div>
-                <div className="relative max-w-md mx-auto">
+                <div className="relative max-w-lg mx-auto">
                   <video 
                     ref={videoRef} 
                     autoPlay 
                     playsInline 
-                    className="w-full h-64 object-cover rounded-lg bg-black" 
+                    className="w-full h-80 object-cover rounded-xl bg-black shadow-lg" 
                   />
-                  <div className="absolute inset-0 border-2 border-dashed border-white rounded-lg m-4 flex items-center justify-center">
-                    <div className="w-32 h-40 border-2 border-white rounded-full opacity-50" />
+                  <div className="absolute inset-0 border-2 border-dashed border-white rounded-xl m-6 flex items-center justify-center">
+                    <div className="w-40 h-48 border-3 border-white rounded-full opacity-60" />
                   </div>
                 </div>
                 <div className="text-center">
                   <Button 
                     onClick={processAttendanceFlow} 
-                    size="lg" 
-                    className="flex items-center gap-2" 
+                    size="lg"
+                    className="flex items-center gap-3 px-8 py-4 text-lg font-semibold shadow-lg" 
                     disabled={isProcessing}
                   >
                     {isProcessing ? (
                       <LoadingSpinner size="sm" />
                     ) : (
-                      <Camera className="w-5 h-5" />
+                      <Camera className="w-6 h-6" />
                     )}
                     {isProcessing ? 'Memproses...' : 'Tandai Kehadiran'}
                   </Button>
@@ -370,51 +370,51 @@ export default function AttendancePage() {
             )}
             
             {step === 'processing' && (
-              <div className="text-center space-y-6">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+              <div className="text-center space-y-8">
+                <div className="w-20 h-20 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto shadow-lg">
                   <LoadingSpinner />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold mb-2">Memproses Absensi</h3>
-                  <p className="text-gray-600">{message}</p>
-                  <div className="mt-4 max-w-xs mx-auto bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{width: '75%'}}></div>
+                  <h3 className="text-2xl font-bold mb-4">Memproses Absensi</h3>
+                  <p className="text-gray-600 text-lg">{message}</p>
+                  <div className="mt-6 max-w-md mx-auto bg-gray-200 rounded-full h-3">
+                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 h-3 rounded-full animate-pulse" style={{width: '75%'}}></div>
                   </div>
                 </div>
               </div>
             )}
 
             {step === 'success' && (
-              <div className="text-center space-y-6">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                  <CheckCircle className="w-8 h-8 text-green-600" />
+              <div className="text-center space-y-8">
+                <div className="w-20 h-20 bg-gradient-to-r from-green-100 to-green-200 rounded-full flex items-center justify-center mx-auto shadow-lg">
+                  <CheckCircle className="w-10 h-10 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold mb-2 text-green-800">Absensi Berhasil!</h3>
-                  <p className="text-gray-600">{message}</p>
+                  <h3 className="text-2xl font-bold mb-4 text-green-800">Absensi Berhasil!</h3>
+                  <p className="text-gray-600 text-lg">{message}</p>
                 </div>
                 {faceAccuracy !== null && (
-                   <Card className="border-green-200 bg-green-50 max-w-sm mx-auto">
-                     <CardContent className="p-4">
-                       <p className="text-sm font-medium text-green-800">
+                   <Card className="border-green-200 bg-green-50 max-w-md mx-auto shadow-lg">
+                     <CardContent className="p-6">
+                       <p className="text-base font-semibold text-green-800">
                          Tingkat Kemiripan: <span className="font-bold">{faceAccuracy.toFixed(1)}%</span>
                        </p>
-                       <p className="text-xs text-green-600 mt-1">
+                       <p className="text-sm text-green-600 mt-2">
                          Status: Wajah terverifikasi ✓
                        </p>
                      </CardContent>
                    </Card>
                 )}
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                  <Clock className="w-4 h-4" />
+                <div className="flex items-center justify-center gap-3 text-base text-gray-500">
+                  <Clock className="w-5 h-5" />
                   {new Date().toLocaleString('id-ID')}
                 </div>
-                <Button onClick={handleDone} size="lg">Selesai</Button>
+                <Button onClick={handleDone} size="lg" className="px-8 py-4 text-lg font-semibold shadow-lg">Selesai</Button>
               </div>
             )}
             
             {error && step !== 'success' && (
-              <Alert className="mt-6 border-red-200 bg-red-50">
+              <Alert className="mt-8 border-red-200 bg-red-50">
                 <AlertCircle className="h-4 w-4 text-red-600" />
                 <AlertDescription className="text-red-800">{error}</AlertDescription>
               </Alert>

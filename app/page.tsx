@@ -39,29 +39,29 @@ export default function Home() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-blue-50 to-white">
         <div className="max-w-4xl mx-auto text-center">
           <div className="mb-8">
-            <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <GraduationCap className="w-10 h-10 text-white" />
+            <div className="w-24 h-24 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg">
+              <GraduationCap className="w-12 h-12 text-white" />
             </div>
-            <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-6">
+            <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-6 leading-tight">
               Smart Student Attendance System
             </h1>
-            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed">
               Revolutionary attendance tracking using advanced face recognition and precise geolocation technology for secure, accurate, and automated student attendance management.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <Link href="/login">
-              <Button size="lg" className="flex items-center gap-2">
+              <Button size="lg" className="flex items-center gap-3 px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
                 <Users className="w-5 h-5" />
                 Student Login
               </Button>
             </Link>
             <Link href="/login">
-              <Button variant="outline" size="lg" className="flex items-center gap-2">
+              <Button variant="outline" size="lg" className="flex items-center gap-3 px-8 py-4 text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-300">
                 <GraduationCap className="w-5 h-5" />
                 Lecturer Login
               </Button>
@@ -71,24 +71,24 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl font-bold text-gray-900 mb-6">
               Advanced Attendance Features
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Experience the future of attendance management with cutting-edge technology
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="hover:shadow-lg transition-shadow">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
+            <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-md hover:-translate-y-2">
               <CardHeader>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                  <Camera className="w-6 h-6 text-blue-600" />
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mb-6">
+                  <Camera className="w-8 h-8 text-blue-600" />
                 </div>
-                <CardTitle>Face Recognition</CardTitle>
+                <CardTitle className="text-xl mb-3">Face Recognition</CardTitle>
                 <CardDescription>
                   Advanced facial recognition using PCA and Eigenface algorithms for secure identity verification
                 </CardDescription>
@@ -111,12 +111,12 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow">
+            <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-md hover:-translate-y-2">
               <CardHeader>
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-                  <MapPin className="w-6 h-6 text-green-600" />
+                <div className="w-16 h-16 bg-gradient-to-r from-green-100 to-green-200 rounded-xl flex items-center justify-center mb-6">
+                  <MapPin className="w-8 h-8 text-green-600" />
                 </div>
-                <CardTitle>Geolocation Tracking</CardTitle>
+                <CardTitle className="text-xl mb-3">Geolocation Tracking</CardTitle>
                 <CardDescription>
                   Precise location verification ensures students are physically present in the classroom
                 </CardDescription>
@@ -139,12 +139,12 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow">
+            <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-md hover:-translate-y-2">
               <CardHeader>
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-                  <Clock className="w-6 h-6 text-purple-600" />
+                <div className="w-16 h-16 bg-gradient-to-r from-purple-100 to-purple-200 rounded-xl flex items-center justify-center mb-6">
+                  <Clock className="w-8 h-8 text-purple-600" />
                 </div>
-                <CardTitle>Real-time Analytics</CardTitle>
+                <CardTitle className="text-xl mb-3">Real-time Analytics</CardTitle>
                 <CardDescription>
                   Comprehensive attendance analytics and reporting for better insights
                 </CardDescription>
@@ -167,12 +167,12 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow">
+            <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-md hover:-translate-y-2">
               <CardHeader>
-                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mb-4">
-                  <Shield className="w-6 h-6 text-red-600" />
+                <div className="w-16 h-16 bg-gradient-to-r from-red-100 to-red-200 rounded-xl flex items-center justify-center mb-6">
+                  <Shield className="w-8 h-8 text-red-600" />
                 </div>
-                <CardTitle>Security & Privacy</CardTitle>
+                <CardTitle className="text-xl mb-3">Security & Privacy</CardTitle>
                 <CardDescription>
                   Enterprise-grade security with encrypted data storage and privacy protection
                 </CardDescription>
@@ -195,12 +195,12 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow">
+            <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-md hover:-translate-y-2">
               <CardHeader>
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mb-4">
-                  <Users className="w-6 h-6 text-yellow-600" />
+                <div className="w-16 h-16 bg-gradient-to-r from-yellow-100 to-yellow-200 rounded-xl flex items-center justify-center mb-6">
+                  <Users className="w-8 h-8 text-yellow-600" />
                 </div>
-                <CardTitle>Multi-User Support</CardTitle>
+                <CardTitle className="text-xl mb-3">Multi-User Support</CardTitle>
                 <CardDescription>
                   Separate interfaces for students and lecturers with role-based access control
                 </CardDescription>
@@ -223,12 +223,12 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow">
+            <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-md hover:-translate-y-2">
               <CardHeader>
-                <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4">
-                  <GraduationCap className="w-6 h-6 text-indigo-600" />
+                <div className="w-16 h-16 bg-gradient-to-r from-indigo-100 to-indigo-200 rounded-xl flex items-center justify-center mb-6">
+                  <GraduationCap className="w-8 h-8 text-indigo-600" />
                 </div>
-                <CardTitle>Easy Integration</CardTitle>
+                <CardTitle className="text-xl mb-3">Easy Integration</CardTitle>
                 <CardDescription>
                   Seamless integration with existing university systems and databases
                 </CardDescription>
@@ -255,16 +255,16 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-blue-600">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-600 to-indigo-600">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">
+          <h2 className="text-4xl font-bold text-white mb-6">
             Ready to Transform Your Attendance System?
           </h2>
-          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-blue-100 mb-10 max-w-3xl mx-auto">
             Join thousands of educational institutions already using our smart attendance solution
           </p>
           <Link href="/login">
-            <Button size="lg" variant="secondary" className="flex items-center gap-2">
+            <Button size="lg" variant="secondary" className="flex items-center gap-3 px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
               Get Started Now
               <ArrowRight className="w-5 h-5" />
             </Button>
@@ -273,24 +273,24 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12 px-4 sm:px-6 lg:px-8">
+      <footer className="bg-gray-900 text-white py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-4 gap-10">
             <div className="col-span-2">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                  <GraduationCap className="w-5 h-5 text-white" />
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
+                  <GraduationCap className="w-6 h-6 text-white" />
                 </div>
-                <span className="text-xl font-bold">AttendanceTracker</span>
+                <span className="text-2xl font-bold">AttendanceTracker</span>
               </div>
-              <p className="text-gray-400 mb-4">
+              <p className="text-gray-400 mb-6 text-lg leading-relaxed">
                 Next-generation student attendance management system powered by AI and advanced biometric technology.
               </p>
             </div>
             
             <div>
-              <h3 className="font-semibold mb-4">Features</h3>
-              <ul className="space-y-2 text-gray-400">
+              <h3 className="font-semibold mb-6 text-lg">Features</h3>
+              <ul className="space-y-3 text-gray-400">
                 <li>Face Recognition</li>
                 <li>Geolocation Tracking</li>
                 <li>Real-time Analytics</li>
@@ -299,8 +299,8 @@ export default function Home() {
             </div>
             
             <div>
-              <h3 className="font-semibold mb-4">Technology</h3>
-              <ul className="space-y-2 text-gray-400">
+              <h3 className="font-semibold mb-6 text-lg">Technology</h3>
+              <ul className="space-y-3 text-gray-400">
                 <li>Next.js Frontend</li>
                 <li>NestJS Backend</li>
                 <li>MySQL Database</li>
@@ -309,7 +309,7 @@ export default function Home() {
             </div>
           </div>
           
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+          <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
             <p>&copy; 2024 AttendanceTracker. Built with cutting-edge technology for modern education.</p>
           </div>
         </div>

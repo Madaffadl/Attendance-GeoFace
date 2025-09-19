@@ -77,57 +77,63 @@ export default function StudentDashboard() {
       showSearch={true}
     >
       {/* User Info Card */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3">
+      <Card className="mb-8 shadow-lg border-0 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <CardHeader className="pb-6">
+          <CardTitle className="flex items-center gap-4">
             <Image
               src={user.photo}
               alt={user.name}
-              width={48}
-              height={48}
-              className="w-12 h-12 rounded-full object-cover"
+              width={64}
+              height={64}
+              className="w-16 h-16 rounded-full object-cover border-4 border-white shadow-md"
             />
             <div>
-              <h2 className="text-xl">{user.name}</h2>
-              <p className="text-sm text-gray-600">NIM: {user.identifier}</p>
+              <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
+              <p className="text-base text-gray-600 font-medium">NIM: {user.identifier}</p>
             </div>
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-base mt-2">
             {user.email} • {user.program_study}
           </CardDescription>
         </CardHeader>
       </Card>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Kelas Terdaftar</CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+        <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-base font-semibold">Kelas Terdaftar</CardTitle>
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <BookOpen className="h-6 w-6 text-blue-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{classes.length}</div>
-            <p className="text-xs text-muted-foreground">Semester ini</p>
+          <CardContent className="pt-0">
+            <div className="text-3xl font-bold text-gray-900">{classes.length}</div>
+            <p className="text-sm text-gray-600 mt-1">Semester ini</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Kelas Hari Ini</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+        <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-base font-semibold">Kelas Hari Ini</CardTitle>
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+              <Calendar className="h-6 w-6 text-green-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{todayClasses.length}</div>
-            <p className="text-xs text-muted-foreground">Jadwal hari ini</p>
+          <CardContent className="pt-0">
+            <div className="text-3xl font-bold text-gray-900">{todayClasses.length}</div>
+            <p className="text-sm text-gray-600 mt-1">Jadwal hari ini</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tingkat Kehadiran</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+        <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-base font-semibold">Tingkat Kehadiran</CardTitle>
+            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+              <TrendingUp className="h-6 w-6 text-purple-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">85%</div>
-            <p className="text-xs text-muted-foreground">Rata-rata bulan ini</p>
+          <CardContent className="pt-0">
+            <div className="text-3xl font-bold text-gray-900">85%</div>
+            <p className="text-sm text-gray-600 mt-1">Rata-rata bulan ini</p>
           </CardContent>
         </Card>
       </div>
@@ -138,57 +144,57 @@ export default function StudentDashboard() {
       </div>
 
       {/* Classes Section */}
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">Kelas Saya</h2>
-          <Badge variant="secondary">
+          <h2 className="text-3xl font-bold text-gray-900">Kelas Saya</h2>
+          <Badge variant="secondary" className="px-4 py-2 text-base">
             {classes.length} Kelas Terdaftar
           </Badge>
         </div>
         {classes.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-12">
-              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Kelas</h3>
-              <p className="text-gray-600">Anda belum terdaftar di kelas manapun.</p>
+          <Card className="shadow-lg border-0">
+            <CardContent className="text-center py-16">
+              <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-6" />
+              <h3 className="text-xl font-medium text-gray-900 mb-3">Belum Ada Kelas</h3>
+              <p className="text-gray-600 text-lg">Anda belum terdaftar di kelas manapun.</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {classes.map((classItem) => (
-              <Card key={classItem.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
+              <Card key={classItem.id} className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg hover:-translate-y-1">
+                <CardHeader className="pb-4">
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle className="text-lg">{classItem.class_name}</CardTitle>
-                      <CardDescription>{classItem.lecturer_name}</CardDescription>
+                      <CardTitle className="text-xl mb-2">{classItem.class_name}</CardTitle>
+                      <CardDescription className="text-base">{classItem.lecturer_name}</CardDescription>
                     </div>
-                    <Badge variant="outline">{classItem.class_code}</Badge>
+                    <Badge variant="outline" className="px-3 py-1 text-sm font-semibold">{classItem.class_code}</Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Clock className="w-4 h-4" />
+                <CardContent className="space-y-6 pt-0">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 text-base text-gray-600">
+                      <Clock className="w-5 h-5" />
                       {classItem.schedule}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <MapPin className="w-4 h-4" />
+                    <div className="flex items-center gap-3 text-base text-gray-600">
+                      <MapPin className="w-5 h-5" />
                       Lokasi Kampus
                     </div>
                   </div>
                   
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <Button
                       onClick={() => handleAttendClass(classItem.id)}
-                      className="flex-1"
+                      className="flex-1 h-11 font-semibold"
                     >
                       Tandai Kehadiran
                     </Button>
                     <Button
                       onClick={() => router.push(`/student/register-face/${classItem.id}`)}
                       variant="outline"
-                      className="flex-1"
+                      className="flex-1 h-11 font-semibold"
                     >
                       Registrasi Wajah
                     </Button>
