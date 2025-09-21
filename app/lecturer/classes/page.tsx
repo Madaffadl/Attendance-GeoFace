@@ -283,7 +283,6 @@ export default function ClassesPage() {
           </div>
         </CardContent>
       </Card>
-        </Card>
       {/* Classes List */}
       <Card>
         <CardHeader>
