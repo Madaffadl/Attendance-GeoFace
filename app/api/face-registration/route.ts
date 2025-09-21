@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mockStudents, mockFaceRecognition, mockActivityLogs } from '@/lib/mockData';
+import { saveFaceData } from '@/lib/faceStorage';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,8 +26,11 @@ export async function POST(request: NextRequest) {
     const studentIndex = mockStudents.findIndex(s => s.id === student_id);
     if (studentIndex !== -1) {
       mockStudents[studentIndex].face_vector = face_descriptor;
-      console.log(`Face vector saved for student ${student_id}:`, face_descriptor.substring(0, 50) + '...');
+      console.log(`Face vector updated in mock data for student ${student_id}`);
     }
+
+    // Save face data to persistent storage (localStorage via client)
+    // This will be handled by the client-side after successful response
 
     // Update or create face recognition record
     const existingRegistration = mockFaceRecognition.find(fr => fr.student_id === student_id);
@@ -56,7 +60,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Registrasi wajah berhasil! Sekarang Anda dapat melakukan absensi dengan face recognition.',
-      student: mockStudents[studentIndex] // Return updated student data
+      student: mockStudents[studentIndex], // Return updated student data
+      face_descriptor: face_descriptor // Return face descriptor for client-side storage
     });
 
   } catch (error) {

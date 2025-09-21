@@ -23,6 +23,7 @@ import { Class, Student } from '@/types';
 import { getCurrentLocation, LocationCoordinates, validateLocation } from '@/lib/geolocation';
 import { loadModels, captureImageFromVideo, processAttendanceWithFace } from '@/lib/faceRecognition';
 import { mockStudents, mockClasses } from '@/lib/mockData';
+import { getFaceData, hasFaceData, migrateFaceDataFromMock } from '@/lib/faceStorage';
 
 // Interface for logged in user
 interface AuthUser {
@@ -76,6 +77,9 @@ export default function AttendancePage() {
 
       const foundClass = mockClasses.find((cls: Class) => cls.id === classId);
       const foundStudent = mockStudents.find((s: Student) => s.id === parsedUser.id);
+
+      // Migrate any existing face data from mock to localStorage
+      migrateFaceDataFromMock(mockStudents);
 
       if (foundClass) setClassData(foundClass);
       else setError('Kelas tidak ditemukan');
@@ -154,17 +158,17 @@ export default function AttendancePage() {
   };
   
   const processAttendanceFlow = async () => {
-    if (!user || !location || !studentData) {
+    if (!user || !location) {
       setError("Data tidak lengkap untuk memproses absensi.");
       return;
     }
 
-    console.log('Processing attendance for student:', studentData.id);
-    console.log('Student face vector exists:', !!studentData.face_vector);
-    console.log('Face vector length:', studentData.face_vector?.length || 0);
-    // Check if student has registered face
-    if (!studentData.face_vector || studentData.face_vector.length < 50) {
-      console.log('Face not registered, redirecting to registration');
+    console.log('Processing attendance for student:', user.id);
+    
+    // Check if student has registered face data in persistent storage
+    const faceData = getFaceData(user.id);
+    if (!faceData || !hasFaceData(user.id)) {
+      console.log('Face not registered in persistent storage, redirecting to registration');
       setError("Anda belum mendaftarkan wajah. Silakan daftarkan wajah terlebih dahulu.");
       setTimeout(() => {
         router.push(`/student/register-face/${classId}`);
@@ -193,7 +197,7 @@ export default function AttendancePage() {
       setMessage('Memproses pengenalan wajah...');
 
       // Process face recognition
-      const faceResult = await processAttendanceWithFace(imageData, studentData.face_vector);
+      const faceResult = await processAttendanceWithFace(imageData, faceData.face_descriptor);
       
       if (!faceResult.success) {
         setError(faceResult.message);

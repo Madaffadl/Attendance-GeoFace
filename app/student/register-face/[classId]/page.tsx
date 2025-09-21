@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Class } from '@/types';
 import { loadModels, processMultipleFaceImages, descriptorToString, captureImageFromVideo } from '@/lib/faceRecognition';
+import { saveFaceData } from '@/lib/faceStorage';
 
 interface User {
   id: string;
@@ -209,11 +210,10 @@ export default function RegisterFacePage() {
       setRegistrationProgress(100);
       
       if (data.success) {
-        // Update user data in localStorage with new face vector
-        if (user && data.student) {
-          const updatedUser = { ...user };
-          localStorage.setItem('user', JSON.stringify(updatedUser));
-          console.log('Face registration successful, user data updated');
+        // Save face data to persistent storage
+        if (user && data.face_descriptor) {
+          saveFaceData(user.id, data.face_descriptor, faceProcessingResult.confidence || 0.95, images.length);
+          console.log('Face registration successful, data saved to persistent storage');
         }
         
         setStep('success');

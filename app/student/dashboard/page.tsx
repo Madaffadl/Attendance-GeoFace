@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { Calendar, Clock, MapPin, User, TrendingUp, BookOpen } from 'lucide-react';
 import { Class } from '@/types';
+import { hasFaceData, getFaceDataStats } from '@/lib/faceStorage';
 
 interface User {
   id: string;
@@ -24,6 +25,7 @@ interface User {
 export default function StudentDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [faceRegistrationStatus, setFaceRegistrationStatus] = useState<boolean>(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -42,6 +44,16 @@ export default function StudentDashboard() {
 
     setUser(parsedUser);
     fetchClasses(parsedUser.id);
+    
+    // Check face registration status
+    const hasRegisteredFace = hasFaceData(parsedUser.id);
+    setFaceRegistrationStatus(hasRegisteredFace);
+    
+    if (hasRegisteredFace) {
+      console.log('Face data found for user:', parsedUser.id);
+    } else {
+      console.log('No face data found for user:', parsedUser.id);
+    }
   }, [router]);
 
   const fetchClasses = async (studentId: string) => {
@@ -188,15 +200,16 @@ export default function StudentDashboard() {
                     <Button
                       onClick={() => handleAttendClass(classItem.id)}
                       className="flex-1 h-11 font-semibold"
+                      disabled={!faceRegistrationStatus}
                     >
-                      Tandai Kehadiran
+                      {faceRegistrationStatus ? 'Tandai Kehadiran' : 'Daftar Wajah Dulu'}
                     </Button>
                     <Button
                       onClick={() => router.push(`/student/register-face/${classItem.id}`)}
                       variant="outline"
                       className="flex-1 h-11 font-semibold"
                     >
-                      Registrasi Wajah
+                      {faceRegistrationStatus ? 'Update Wajah' : 'Registrasi Wajah'}
                     </Button>
                   </div>
                 </CardContent>
