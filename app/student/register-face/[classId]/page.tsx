@@ -250,7 +250,23 @@ export default function RegisterFacePage() {
 
   const handleDone = () => {
     console.log('Registration completed, navigating to dashboard');
-    router.push('/student/dashboard');
+
+    // Pastikan user data masih ada di localStorage sebelum redirect
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      console.log('User data confirmed in localStorage, redirecting to dashboard');
+      // Gunakan window.location untuk full page refresh dan memastikan state ter-update
+      window.location.href = '/student/dashboard';
+    } else {
+      console.error('User data missing from localStorage after registration');
+      // Restore user data if missing
+      if (user) {
+        localStorage.setItem('user', JSON.stringify(user));
+        window.location.href = '/student/dashboard';
+      } else {
+        router.replace('/login');
+      }
+    }
   };
 
   if (isLoading) {

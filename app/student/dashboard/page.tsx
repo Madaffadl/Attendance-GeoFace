@@ -32,23 +32,36 @@ export default function StudentDashboard() {
   useEffect(() => {
     // Check if user is logged in
     const userData = localStorage.getItem('user');
+    console.log('Dashboard useEffect - checking user data:', userData ? 'exists' : 'missing');
+
     if (!userData) {
+      console.log('No user data found, redirecting to login');
       router.push('/login');
       return;
     }
 
-    const parsedUser = JSON.parse(userData);
-    if (parsedUser.userType !== 'student') {
+    try {
+      const parsedUser = JSON.parse(userData);
+      console.log('Parsed user:', parsedUser);
+
+      if (parsedUser.userType !== 'student') {
+        console.log('User is not a student, redirecting to login');
+        router.push('/login');
+        return;
+      }
+
+      setUser(parsedUser);
+      fetchClasses(parsedUser.id);
+
+      const hasRegisteredFace = hasFaceData(parsedUser.id);
+      console.log('Face registration status:', hasRegisteredFace);
+      setFaceRegistrationStatus(hasRegisteredFace);
+    } catch (error) {
+      console.error('Error parsing user data:', error);
       router.push('/login');
-      return;
     }
-
-    setUser(parsedUser);
-    fetchClasses(parsedUser.id);
-
-    const hasRegisteredFace = hasFaceData(parsedUser.id);
-    setFaceRegistrationStatus(hasRegisteredFace);
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchClasses = async (studentId: string) => {
     try {
