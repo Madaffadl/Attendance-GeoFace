@@ -7,14 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { 
-  ArrowLeft, 
-  Camera, 
-  CheckCircle, 
-  AlertCircle,
-  RefreshCw,
-  User,
-} from 'lucide-react';
+import { ArrowLeft, Camera, CircleCheck as CheckCircle, CircleAlert as AlertCircle, RefreshCw, User } from 'lucide-react';
 import { Class } from '@/types';
 import { loadModels, processMultipleFaceImages, descriptorToString, captureImageFromVideo } from '@/lib/faceRecognition';
 import { saveFaceData } from '@/lib/faceStorage';
@@ -212,7 +205,7 @@ export default function RegisterFacePage() {
       if (data.success) {
         // Save face data to persistent storage
         if (user && data.face_descriptor) {
-          saveFaceData(user.id, data.face_descriptor, faceProcessingResult.confidence || 0.95, images.length);
+          saveFaceData(user.id, data.face_descriptor, 0.95, images.length);
           console.log('Face registration successful, data saved to persistent storage');
         }
         

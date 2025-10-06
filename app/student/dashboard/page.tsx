@@ -26,6 +26,7 @@ export default function StudentDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [classes, setClasses] = useState<Class[]>([]);
   const [faceRegistrationStatus, setFaceRegistrationStatus] = useState<boolean>(false);
+  const [classesWithFaceStatus, setClassesWithFaceStatus] = useState<{ [key: string]: boolean }>({});
   const router = useRouter();
 
   useEffect(() => {
@@ -44,16 +45,9 @@ export default function StudentDashboard() {
 
     setUser(parsedUser);
     fetchClasses(parsedUser.id);
-    
-    // Check face registration status
+
     const hasRegisteredFace = hasFaceData(parsedUser.id);
     setFaceRegistrationStatus(hasRegisteredFace);
-    
-    if (hasRegisteredFace) {
-      console.log('Face data found for user:', parsedUser.id);
-    } else {
-      console.log('No face data found for user:', parsedUser.id);
-    }
   }, [router]);
 
   const fetchClasses = async (studentId: string) => {
@@ -110,6 +104,51 @@ export default function StudentDashboard() {
         </CardHeader>
       </Card>
 
+      {/* Face Registration Status Alert */}
+      {!faceRegistrationStatus && (
+        <Card className="mb-8 shadow-lg border-0 bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-l-orange-500">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <User className="h-6 w-6 text-orange-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Registrasi Wajah Diperlukan</h3>
+                <p className="text-gray-600 mb-3">Anda belum mendaftarkan wajah. Silakan daftar terlebih dahulu untuk dapat melakukan absensi.</p>
+                <Button
+                  onClick={() => {
+                    const firstClass = classes[0];
+                    if (firstClass) {
+                      router.push(`/student/register-face/${firstClass.id}`);
+                    }
+                  }}
+                  className="bg-orange-500 hover:bg-orange-600"
+                  disabled={classes.length === 0}
+                >
+                  Registrasi Wajah Sekarang
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {faceRegistrationStatus && (
+        <Card className="mb-8 shadow-lg border-0 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-l-green-500">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <User className="h-6 w-6 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Wajah Sudah Terdaftar</h3>
+                <p className="text-gray-600">Anda sudah mendaftarkan wajah dan dapat melakukan absensi untuk semua kelas.</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
         <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
@@ -138,21 +177,23 @@ export default function StudentDashboard() {
         </Card>
         <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-base font-semibold">Tingkat Kehadiran</CardTitle>
-            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-              <TrendingUp className="h-6 w-6 text-purple-600" />
+            <CardTitle className="text-base font-semibold">Status Registrasi Wajah</CardTitle>
+            <div className={`w-12 h-12 ${faceRegistrationStatus ? 'bg-green-100' : 'bg-orange-100'} rounded-full flex items-center justify-center`}>
+              <User className={`h-6 w-6 ${faceRegistrationStatus ? 'text-green-600' : 'text-orange-600'}`} />
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="text-3xl font-bold text-gray-900">85%</div>
-            <p className="text-sm text-gray-600 mt-1">Rata-rata bulan ini</p>
+            <div className="text-2xl font-bold text-gray-900">{faceRegistrationStatus ? 'Terdaftar' : 'Belum Terdaftar'}</div>
+            <p className="text-sm text-gray-600 mt-1">
+              {faceRegistrationStatus ? 'Siap untuk absensi' : 'Perlu registrasi'}
+            </p>
           </CardContent>
         </Card>
       </div>
 
       {/* Quick Actions */}
       <div className="mb-8">
-        <QuickActions user={user} />
+        <QuickActions user={user} faceRegistrationStatus={faceRegistrationStatus} classes={classes} />
       </div>
 
       {/* Classes Section */}
@@ -196,22 +237,13 @@ export default function StudentDashboard() {
                     </div>
                   </div>
                   
-                  <div className="flex gap-3">
-                    <Button
-                      onClick={() => handleAttendClass(classItem.id)}
-                      className="flex-1 h-11 font-semibold"
-                      disabled={!faceRegistrationStatus}
-                    >
-                      {faceRegistrationStatus ? 'Tandai Kehadiran' : 'Daftar Wajah Dulu'}
-                    </Button>
-                    <Button
-                      onClick={() => router.push(`/student/register-face/${classItem.id}`)}
-                      variant="outline"
-                      className="flex-1 h-11 font-semibold"
-                    >
-                      {faceRegistrationStatus ? 'Update Wajah' : 'Registrasi Wajah'}
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={() => handleAttendClass(classItem.id)}
+                    className="w-full h-11 font-semibold"
+                    disabled={!faceRegistrationStatus}
+                  >
+                    {faceRegistrationStatus ? 'Tandai Kehadiran' : 'Daftar Wajah Dulu'}
+                  </Button>
                 </CardContent>
               </Card>
             ))}

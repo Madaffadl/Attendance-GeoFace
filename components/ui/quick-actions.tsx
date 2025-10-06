@@ -2,16 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Camera,
-  Plus,
-  Users,
-  Calendar,
-  BarChart3,
-  Download,
-  BookOpen,
-  MapPin
-} from 'lucide-react';
+import { Camera, Plus, Users, Calendar, ChartBar as BarChart3, Download, BookOpen, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface User {
@@ -23,36 +14,44 @@ interface User {
 
 interface QuickActionsProps {
   user: User;
+  faceRegistrationStatus?: boolean;
+  classes?: any[];
 }
 
-export function QuickActions({ user }: QuickActionsProps) {
+export function QuickActions({ user, faceRegistrationStatus = false, classes = [] }: QuickActionsProps) {
   const router = useRouter();
 
-  const studentActions = [
-    {
-      label: 'Tandai Kehadiran',
-      description: 'Absen untuk kelas hari ini',
-      icon: Camera,
-      action: () => router.push('/student/attendance'),
-      color: 'bg-blue-500 hover:bg-blue-600'
-    },
-    {
-      label: 'Lihat Jadwal',
-      description: 'Cek jadwal kelas minggu ini',
-      icon: Calendar,
-      action: () => router.push('/student/schedule'),
-      color: 'bg-green-500 hover:bg-green-600'
-    },
+  const studentActions: Array<{
+    label: string;
+    description: string;
+    icon: any;
+    action: () => void;
+    color: string;
+    disabled?: boolean;
+  }> = [
     {
       label: 'Registrasi Wajah',
-      description: 'Daftar wajah untuk kelas baru',
-      icon: Users,
-      action: () => router.push('/student/face-registration'),
-      color: 'bg-purple-500 hover:bg-purple-600'
+      description: faceRegistrationStatus ? 'Perbarui data wajah Anda' : 'Daftar wajah untuk absensi',
+      icon: Camera,
+      action: () => {
+        const firstClass = classes[0];
+        if (firstClass) {
+          router.push(`/student/register-face/${firstClass.id}`);
+        }
+      },
+      color: faceRegistrationStatus ? 'bg-green-500 hover:bg-green-600' : 'bg-orange-500 hover:bg-orange-600',
+      disabled: classes.length === 0
     }
   ];
 
-  const lecturerActions = [
+  const lecturerActions: Array<{
+    label: string;
+    description: string;
+    icon: any;
+    action: () => void;
+    color: string;
+    disabled?: boolean;
+  }> = [
     {
       label: 'Tambah Kelas',
       description: 'Buat kelas baru',
@@ -98,6 +97,7 @@ export function QuickActions({ user }: QuickActionsProps) {
               onClick={action.action}
               variant="outline"
               className="h-auto p-4 flex flex-col items-start gap-2 hover:shadow-md transition-all"
+              disabled={action.disabled || false}
             >
               <div className={`w-8 h-8 rounded-lg ${action.color} flex items-center justify-center mb-2`}>
                 <action.icon className="w-4 h-4 text-white" />
