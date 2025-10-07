@@ -323,8 +323,6 @@ export function Navigation({ user, onLogout }: NavigationProps) {
         </div>
       </aside>
 
-      {/* Main Content Spacer for Desktop */}
-      <div className="hidden lg:block w-72 flex-shrink-0" />
     </>
   );
 }
