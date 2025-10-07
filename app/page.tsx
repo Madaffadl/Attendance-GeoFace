@@ -310,7 +310,7 @@ export default function Home() {
           </div>
           
           <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 AttendanceTracker. Built with cutting-edge technology for modern education.</p>
+            <p>&copy; 2025 AttendanceTracker. Built with cutting-edge technology for modern education by M.Daffa Fadillah.</p>
           </div>
         </div>
       </footer>
