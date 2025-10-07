@@ -322,7 +322,6 @@ export function Navigation({ user, onLogout }: NavigationProps) {
           </div>
         </div>
       </aside>
-
     </>
   );
 }
