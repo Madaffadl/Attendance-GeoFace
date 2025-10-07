@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Plus,
   Search,
@@ -39,6 +40,9 @@ export default function ClassesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddingClass, setIsAddingClass] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedDay, setSelectedDay] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -83,13 +87,20 @@ export default function ClassesPage() {
 
   const handleAddClass = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!selectedDay || !startTime || !endTime) {
+      alert('Mohon lengkapi semua field jadwal (Hari, Waktu Mulai, dan Waktu Selesai)');
+      return;
+    }
+
     setIsAddingClass(true);
 
     const formData = new FormData(e.currentTarget);
+    const schedule = `${selectedDay} ${startTime}-${endTime}`;
     const classData = {
       class_code: formData.get('class_code') as string,
       class_name: formData.get('class_name') as string,
-      schedule: formData.get('schedule') as string,
+      schedule: schedule,
       lecturer_id: user?.id
     };
 
@@ -108,6 +119,9 @@ export default function ClassesPage() {
         setClasses([...classes, data.class]);
         setIsDialogOpen(false);
         (e.target as HTMLFormElement).reset();
+        setSelectedDay('');
+        setStartTime('');
+        setEndTime('');
       } else {
         alert(data.message || 'Failed to create class');
       }
@@ -183,14 +197,46 @@ export default function ClassesPage() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="schedule">Jadwal</Label>
-                <Input
-                  id="schedule"
-                  name="schedule"
-                  placeholder="contoh: Senin 10:00-12:00"
-                  required
-                  disabled={isAddingClass}
-                />
+                <Label htmlFor="day">Hari</Label>
+                <Select value={selectedDay} onValueChange={setSelectedDay} required disabled={isAddingClass}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih hari" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Senin">Senin</SelectItem>
+                    <SelectItem value="Selasa">Selasa</SelectItem>
+                    <SelectItem value="Rabu">Rabu</SelectItem>
+                    <SelectItem value="Kamis">Kamis</SelectItem>
+                    <SelectItem value="Jumat">Jumat</SelectItem>
+                    <SelectItem value="Sabtu">Sabtu</SelectItem>
+                    <SelectItem value="Minggu">Minggu</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="startTime">Waktu Mulai</Label>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    required
+                    disabled={isAddingClass}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endTime">Waktu Selesai</Label>
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    required
+                    disabled={isAddingClass}
+                  />
+                </div>
               </div>
               
               <div className="flex justify-end space-x-2">

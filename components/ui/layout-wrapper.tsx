@@ -81,17 +81,17 @@ export function LayoutWrapper({
         showSearch={showSearch}
       />
 
-      <div className="flex">
+      <div className="flex min-h-screen">
         {/* Navigation */}
-        <Navigation 
-          user={user} 
+        <Navigation
+          user={user}
           onLogout={handleLogout}
         />
 
         {/* Main Content */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 w-full lg:ml-64">
           {/* Desktop Header */}
-          <header className="hidden lg:block bg-white shadow-sm border-b">
+          <header className="hidden lg:block bg-white shadow-sm border-b sticky top-0 z-10">
             <div className="px-6 py-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -101,16 +101,18 @@ export function LayoutWrapper({
                   )}
                 </div>
               </div>
-              
+
               {/* Breadcrumbs */}
-              <div className="mt-4">
-                <BreadcrumbNav items={breadcrumbItems} />
-              </div>
+              {breadcrumbItems && breadcrumbItems.length > 0 && (
+                <div className="mt-4">
+                  <BreadcrumbNav items={breadcrumbItems} />
+                </div>
+              )}
             </div>
           </header>
 
           {/* Page Content */}
-          <main className="p-4 lg:p-6">
+          <main className="p-4 lg:p-6 w-full">
             {children}
           </main>
         </div>
