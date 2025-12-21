@@ -3,12 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { LecturerSidebar as Sidebar } from '@/components/ui/sidebar';
+import { LayoutWrapper } from '@/components/ui/layout-wrapper';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { 
   Search,
   Users,
@@ -25,39 +24,16 @@ import {
 import { Student } from '@/types';
 import { mockStudents, mockEnrollments, mockClasses, mockAttendance } from '@/lib/mockData';
 
-interface User {
-  id: string;
-  name: string;
-  userType: string;
-  identifier: string;
-}
-
 export default function StudentsPage() {
-  const [user, setUser] = useState<User | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProgram, setSelectedProgram] = useState('all');
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is logged in
-    const userData = localStorage.getItem('user');
-    if (!userData) {
-      router.push('/login');
-      return;
-    }
-
-    const parsedUser = JSON.parse(userData);
-    if (parsedUser.userType !== 'lecturer') {
-      router.push('/login');
-      return;
-    }
-
-    setUser(parsedUser);
     loadStudents();
-  }, [router]);
+  }, []);
 
   const loadStudents = () => {
     // Get students enrolled in lecturer's classes
@@ -73,7 +49,6 @@ export default function StudentsPage() {
     );
     
     setStudents(lecturerStudents);
-    setIsLoading(false);
   };
 
   const filterStudents = useCallback(() => {
@@ -112,11 +87,6 @@ export default function StudentsPage() {
     return mockClasses.filter(cls => studentClassIds.includes(cls.id));
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    router.push('/login');
-  };
-
   const handleExportStudents = () => {
     const csvContent = [
       ['NIM', 'Nama', 'Email', 'Program Studi', 'Tingkat Kehadiran'],
@@ -144,39 +114,19 @@ export default function StudentsPage() {
     .map(s => s.program_study)
     .filter((program, index, self) => self.indexOf(program) === index);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar user={user} onLogout={handleLogout} />
-
-      <div className="flex-1">
-        <header className="bg-white shadow-sm border-b">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Daftar Mahasiswa</h1>
-                <p className="text-gray-600">Kelola dan pantau mahasiswa di kelas Anda</p>
-              </div>
-              <Button onClick={handleExportStudents} className="flex items-center gap-2">
-                <Download className="w-4 h-4" />
-                Export Data
-              </Button>
-            </div>
-          </div>
-        </header>
-
-        <main className="p-6">
+    <LayoutWrapper title="Daftar Mahasiswa" subtitle="Kelola dan pantau mahasiswa di kelas Anda">
+      {/* Header Actions */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Daftar Mahasiswa</h1>
+          <p className="text-muted-foreground">Kelola dan pantau mahasiswa di kelas Anda</p>
+        </div>
+        <Button onClick={handleExportStudents} className="flex items-center gap-2">
+          <Download className="w-4 h-4" />
+          Export Data
+        </Button>
+      </div>
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <Card>
@@ -356,8 +306,6 @@ export default function StudentsPage() {
               )}
             </CardContent>
           </Card>
-        </main>
-      </div>
-    </div>
+    </LayoutWrapper>
   );
 }

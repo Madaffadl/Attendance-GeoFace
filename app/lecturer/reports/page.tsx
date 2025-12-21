@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { LecturerSidebar as Sidebar } from '@/components/ui/sidebar';
+import { LayoutWrapper } from '@/components/ui/layout-wrapper';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { 
   BarChart,
   Bar,
@@ -33,42 +32,9 @@ import {
 } from 'lucide-react';
 import { mockClasses, mockAttendance, mockStudents, mockEnrollments } from '@/lib/mockData';
 
-interface User {
-  id: string;
-  name: string;
-  userType: string;
-  identifier: string;
-}
-
 export default function ReportsPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [selectedClass, setSelectedClass] = useState('all');
-  const router = useRouter();
-
-  useEffect(() => {
-    // Check if user is logged in
-    const userData = localStorage.getItem('user');
-    if (!userData) {
-      router.push('/login');
-      return;
-    }
-
-    const parsedUser = JSON.parse(userData);
-    if (parsedUser.userType !== 'lecturer') {
-      router.push('/login');
-      return;
-    }
-
-    setUser(parsedUser);
-    setIsLoading(false);
-  }, [router]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    router.push('/login');
-  };
 
   // Get lecturer's classes
   const lecturerClasses = mockClasses.filter(cls => cls.lecturer_id === '1');
@@ -227,18 +193,6 @@ export default function ReportsPage() {
     window.URL.revokeObjectURL(url);
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
-
   const stats = getAttendanceStats();
   const classData = getAttendanceByClass();
   const trendData = getAttendanceTrend();
@@ -247,37 +201,29 @@ export default function ReportsPage() {
   const COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B'];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar user={user} onLogout={handleLogout} />
-
-      <div className="flex-1">
-        <header className="bg-white shadow-sm border-b">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Laporan & Analisis</h1>
-                <p className="text-gray-600">Analisis kehadiran dan performa mahasiswa</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <select
-                  value={selectedPeriod}
-                  onChange={(e) => setSelectedPeriod(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="week">Minggu Ini</option>
-                  <option value="month">Bulan Ini</option>
-                  <option value="semester">Semester Ini</option>
-                </select>
-                <Button className="flex items-center gap-2">
-                  <Download className="w-4 h-4" />
-                  Export Semua
-                </Button>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <main className="p-6">
+    <LayoutWrapper title="Laporan & Analisis" subtitle="Analisis kehadiran dan performa mahasiswa">
+      {/* Header Actions */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Laporan & Analisis</h1>
+          <p className="text-muted-foreground">Analisis kehadiran dan performa mahasiswa</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedPeriod}
+            onChange={(e) => setSelectedPeriod(e.target.value)}
+            className="px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="week">Minggu Ini</option>
+            <option value="month">Bulan Ini</option>
+            <option value="semester">Semester Ini</option>
+          </select>
+          <Button className="flex items-center gap-2">
+            <Download className="w-4 h-4" />
+            Export Semua
+          </Button>
+        </div>
+      </div>
           {/* Stats Overview */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <Card>
@@ -470,8 +416,6 @@ export default function ReportsPage() {
               </div>
             </CardContent>
           </Card>
-        </main>
-      </div>
-    </div>
+    </LayoutWrapper>
   );
 }

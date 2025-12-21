@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { LecturerSidebar as Sidebar } from '@/components/ui/sidebar';
+import { LayoutWrapper } from '@/components/ui/layout-wrapper';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,26 +24,17 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-interface User {
-  id: string;
-  name: string;
-  userType: string;
-  identifier: string;
-}
-
 export default function SettingsPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   
   // Form states
   const [profileData, setProfileData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    department: ''
+    name: 'Dr. Sarah Wilson',
+    email: 'sarah.wilson@university.edu',
+    phone: '+62 812-3456-7890',
+    department: 'Computer Science'
   });
   
   const [passwordData, setPasswordData] = useState({
@@ -66,40 +57,6 @@ export default function SettingsPage() {
     requireFaceRegistration: true
   });
 
-  const router = useRouter();
-
-  useEffect(() => {
-    // Check if user is logged in
-    const userData = localStorage.getItem('user');
-    if (!userData) {
-      router.push('/login');
-      return;
-    }
-
-    const parsedUser = JSON.parse(userData);
-    if (parsedUser.userType !== 'lecturer') {
-      router.push('/login');
-      return;
-    }
-
-    setUser(parsedUser);
-    
-    // Load user profile data
-    setProfileData({
-      name: parsedUser.name || '',
-      email: 'sarah.wilson@university.edu',
-      phone: '+62 812-3456-7890',
-      department: 'Computer Science'
-    });
-    
-    setIsLoading(false);
-  }, [router]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    router.push('/login');
-  };
-
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -107,13 +64,6 @@ export default function SettingsPage() {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (!user) return;
-      // Update user data in localStorage
-      const updatedUser: User = { ...user, name: profileData.name };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
-      
       setMessage({ type: 'success', text: 'Profil berhasil diperbarui!' });
     } catch (error) {
       setMessage({ type: 'error', text: 'Gagal memperbarui profil. Silakan coba lagi.' });
@@ -140,7 +90,6 @@ export default function SettingsPage() {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
       setMessage({ type: 'success', text: 'Password berhasil diubah!' });
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error) {
@@ -156,7 +105,6 @@ export default function SettingsPage() {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
       setMessage({ type: 'success', text: 'Pengaturan berhasil disimpan!' });
     } catch (error) {
       setMessage({ type: 'error', text: 'Gagal menyimpan pengaturan. Silakan coba lagi.' });
@@ -165,33 +113,13 @@ export default function SettingsPage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar user={user} onLogout={handleLogout} />
-
-      <div className="flex-1">
-        <header className="bg-white shadow-sm border-b">
-          <div className="px-6 py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Pengaturan</h1>
-              <p className="text-gray-600">Kelola profil dan preferensi sistem</p>
-            </div>
-          </div>
-        </header>
-
-        <main className="p-6">
+    <LayoutWrapper title="Pengaturan" subtitle="Kelola profil dan preferensi sistem">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-foreground">Pengaturan</h1>
+        <p className="text-muted-foreground">Kelola profil dan preferensi sistem</p>
+      </div>
           {/* Success/Error Message */}
           {message && (
             <Alert className={`mb-6 ${message.type === 'success' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
@@ -487,8 +415,6 @@ export default function SettingsPage() {
               Simpan Semua Pengaturan
             </Button>
           </div>
-        </main>
-      </div>
-    </div>
+    </LayoutWrapper>
   );
 }

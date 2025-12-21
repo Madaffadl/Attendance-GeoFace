@@ -6,6 +6,7 @@ import { Navigation } from '@/components/ui/navigation';
 import { BreadcrumbNav } from '@/components/ui/breadcrumb-nav';
 import { MobileHeader } from '@/components/ui/mobile-header';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { useData } from '@/lib/dataContext';
 
 interface User {
   id: string;
@@ -40,6 +41,7 @@ export function LayoutWrapper({
   const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const router = useRouter();
+  const { resetToDefaults } = useData();
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -54,6 +56,8 @@ export function LayoutWrapper({
   }, [router]);
 
   const handleLogout = () => {
+    // Reset all data to defaults before logout
+    resetToDefaults();
     localStorage.removeItem('user');
     router.push('/login');
   };

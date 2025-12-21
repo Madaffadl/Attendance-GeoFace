@@ -1,5 +1,13 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import { DataProvider } from '@/lib/dataContext';
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Attendance-GeoFace',
@@ -12,8 +20,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="id" suppressHydrationWarning>
+      <body className={`${inter.variable} font-sans`}>
+        <DataProvider>
+          {children}
+        </DataProvider>
+      </body>
     </html>
   );
 }
