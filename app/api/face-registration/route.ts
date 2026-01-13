@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { mockStudents, mockFaceRecognition, mockActivityLogs } from '@/lib/mockData';
-import { saveFaceData } from '@/lib/faceStorage';
+import { getSupabase, logActivity, isSupabaseConfigured } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Database not configured' 
+      }, { status: 503 });
+    }
+
     const body = await request.json();
     const { student_id, class_id, face_descriptor } = body;
 
@@ -14,54 +20,63 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const student = mockStudents.find(s => s.id === student_id);
-    if (!student) {
+    const supabase = getSupabase();
+
+    // Verify student exists
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('*')
+      .eq('id', student_id)
+      .single();
+
+    if (studentError || !student) {
       return NextResponse.json({ 
         success: false, 
         message: 'Mahasiswa tidak ditemukan' 
       }, { status: 404 });
     }
 
-    // Update student's face vector
-    const studentIndex = mockStudents.findIndex(s => s.id === student_id);
-    if (studentIndex !== -1) {
-      mockStudents[studentIndex].face_vector = face_descriptor;
-      console.log(`Face vector updated in mock data for student ${student_id}`);
-    }
-
-    // Save face data to persistent storage (localStorage via client)
-    // This will be handled by the client-side after successful response
-
-    // Update or create face recognition record
-    const existingRegistration = mockFaceRecognition.find(fr => fr.student_id === student_id);
-    if (existingRegistration) {
-      existingRegistration.face_vector = face_descriptor;
-      existingRegistration.status = 'Matched';
-      existingRegistration.confidence = 0.95;
-    } else {
-      mockFaceRecognition.push({
-        id: (mockFaceRecognition.length + 1).toString(),
+    // Save or update face data in Supabase
+    const { error: faceError } = await supabase
+      .from('face_data')
+      .upsert({
         student_id,
-        face_vector: face_descriptor,
-        status: 'Matched',
-        confidence: 0.95
+        face_descriptor,
+        confidence_score: 0.95,
+        photos_count: 5,
+        registered_at: new Date().toISOString()
+      }, { 
+        onConflict: 'student_id' 
       });
+
+    if (faceError) {
+      console.error('Face data save error:', faceError);
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Gagal menyimpan data wajah' 
+      }, { status: 500 });
     }
 
     // Log the activity
-    mockActivityLogs.push({
-      id: Date.now().toString(),
+    await logActivity({
       student_id,
+      lecturer_id: null,
       activity_type: 'Face_Registration',
-      time: new Date().toISOString(),
       details: `Face registration completed for class ${class_id}`
     });
 
     return NextResponse.json({
       success: true,
       message: 'Registrasi wajah berhasil! Sekarang Anda dapat melakukan absensi dengan face recognition.',
-      student: mockStudents[studentIndex], // Return updated student data
-      face_descriptor: face_descriptor // Return face descriptor for client-side storage
+      student: {
+        id: student.id,
+        nim: student.nim,
+        name: student.name,
+        email: student.email,
+        program_study: student.program_study,
+        photo: student.photo
+      },
+      face_descriptor: face_descriptor
     });
 
   } catch (error) {
@@ -69,6 +84,60 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: false, 
       message: 'Terjadi kesalahan server' 
+    }, { status: 500 });
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Database not configured' 
+      }, { status: 503 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const studentId = searchParams.get('studentId');
+
+    if (!studentId) {
+      return NextResponse.json({
+        success: false,
+        message: 'Student ID is required'
+      }, { status: 400 });
+    }
+
+    const { data: faceData, error } = await getSupabase()
+      .from('face_data')
+      .select('*')
+      .eq('student_id', studentId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Face data fetch error:', error);
+      return NextResponse.json({
+        success: false,
+        message: 'Failed to fetch face data'
+      }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      hasFaceData: !!faceData,
+      faceData: faceData ? {
+        student_id: faceData.student_id,
+        face_descriptor: faceData.face_descriptor,
+        registration_date: faceData.registered_at,
+        confidence_score: faceData.confidence_score,
+        photos_count: faceData.photos_count
+      } : null
+    });
+
+  } catch (error) {
+    console.error('Face data fetch error:', error);
+    return NextResponse.json({
+      success: false,
+      message: 'Internal server error'
     }, { status: 500 });
   }
 }

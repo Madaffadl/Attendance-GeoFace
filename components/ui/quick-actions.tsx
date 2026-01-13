@@ -2,8 +2,9 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Camera, Plus, Users, Calendar, ChartBar as BarChart3, Download, BookOpen, MapPin } from 'lucide-react';
+import { Camera, Plus, Users, ChartBar as BarChart3, Download, History, BookOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { ROUTES } from '@/lib/routes';
 
 interface User {
   id: string;
@@ -33,15 +34,23 @@ export function QuickActions({ user, faceRegistrationStatus = false, classes = [
       label: 'Registrasi Wajah',
       description: faceRegistrationStatus ? 'Perbarui data wajah Anda' : 'Daftar wajah untuk absensi',
       icon: Camera,
-      action: () => {
-        const firstClass = classes[0];
-        if (firstClass) {
-          router.push(`/student/register-face/${firstClass.id}`);
-        }
-      },
+      action: () => router.push(ROUTES.STUDENT.FACE_REGISTRATION),
       color: faceRegistrationStatus ? 'bg-green-500 hover:bg-green-600' : 'bg-orange-500 hover:bg-orange-600',
-      disabled: classes.length === 0
-    }
+    },
+    {
+      label: 'Lihat Kelas',
+      description: 'Daftar semua kelas Anda',
+      icon: BookOpen,
+      action: () => router.push(ROUTES.STUDENT.CLASSES),
+      color: 'bg-blue-500 hover:bg-blue-600',
+    },
+    {
+      label: 'Riwayat Absensi',
+      description: 'Lihat catatan kehadiran',
+      icon: History,
+      action: () => router.push(ROUTES.STUDENT.ATTENDANCE_HISTORY),
+      color: 'bg-purple-500 hover:bg-purple-600',
+    },
   ];
 
   const lecturerActions: Array<{
@@ -56,28 +65,21 @@ export function QuickActions({ user, faceRegistrationStatus = false, classes = [
       label: 'Tambah Kelas',
       description: 'Buat kelas baru',
       icon: Plus,
-      action: () => router.push('/lecturer/classes/new'),
+      action: () => router.push(ROUTES.LECTURER.CLASSES_NEW),
       color: 'bg-blue-500 hover:bg-blue-600'
     },
     {
       label: 'Lihat Laporan',
       description: 'Analisis kehadiran',
       icon: BarChart3,
-      action: () => router.push('/lecturer/reports'),
+      action: () => router.push(ROUTES.LECTURER.REPORTS),
       color: 'bg-green-500 hover:bg-green-600'
-    },
-    {
-      label: 'Export Data',
-      description: 'Download laporan absensi',
-      icon: Download,
-      action: () => router.push('/lecturer/reports'),
-      color: 'bg-orange-500 hover:bg-orange-600'
     },
     {
       label: 'Kelola Mahasiswa',
       description: 'Lihat daftar mahasiswa',
       icon: Users,
-      action: () => router.push('/lecturer/students'),
+      action: () => router.push(ROUTES.LECTURER.STUDENTS),
       color: 'bg-purple-500 hover:bg-purple-600'
     }
   ];
@@ -85,12 +87,12 @@ export function QuickActions({ user, faceRegistrationStatus = false, classes = [
   const actions = user.userType === 'student' ? studentActions : lecturerActions;
 
   return (
-    <Card>
+    <Card className="shadow-md border-0">
       <CardHeader>
-        <CardTitle>Aksi Cepat</CardTitle>
+        <CardTitle className="text-lg">Aksi Cepat</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {actions.map((action, index) => (
             <Button
               key={index}

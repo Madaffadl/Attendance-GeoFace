@@ -4,54 +4,61 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { LayoutWrapper } from '@/components/ui/layout-wrapper';
 import { QuickActions } from '@/components/ui/quick-actions';
+import { ClassCard } from '@/components/ui/class-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { 
   Plus, 
   Users, 
   Calendar, 
-  Download, 
-  Clock,
-  MapPin,
   TrendingUp,
   BookOpen
 } from 'lucide-react';
 import { Class } from '@/types';
+import { useAuth } from '@/lib/auth-context';
 
-interface User {
-  id: string;
-  name: string;
-  userType: string;
-  identifier: string;
+interface LecturerStats {
+  totalClasses: number;
+  totalStudents: number;
+  todayClasses: number;
+  attendanceRate: number;
 }
 
 export default function LecturerDashboard() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user, isLoading: authLoading } = useAuth();
   const [classes, setClasses] = useState<Class[]>([]);
+  const [stats, setStats] = useState<LecturerStats>({
+    totalClasses: 0,
+    totalStudents: 0,
+    todayClasses: 0,
+    attendanceRate: 0,
+  });
+  const [classStudentCounts, setClassStudentCounts] = useState<{ [key: string]: number }>({});
   const [isAddingClass, setIsAddingClass] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (!userData) {
+    if (!authLoading && !user) {
       router.push('/login');
       return;
     }
 
-    const parsedUser = JSON.parse(userData);
-    if (parsedUser.userType !== 'lecturer') {
+    if (user && user.userType !== 'lecturer') {
       router.push('/login');
       return;
     }
 
-    setUser(parsedUser);
-    fetchClasses(parsedUser.id);
-  }, [router]);
+    if (user) {
+      fetchClasses(user.id);
+      fetchStats(user.id);
+    }
+  }, [user, authLoading, router]);
 
   const fetchClasses = async (lecturerId: string) => {
     try {
@@ -60,9 +67,44 @@ export default function LecturerDashboard() {
       
       if (data.success) {
         setClasses(data.classes);
+        // Fetch student counts for each class
+        data.classes.forEach((cls: Class) => {
+          fetchClassStats(cls.id);
+        });
       }
     } catch (error) {
       console.error('Error fetching classes:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchStats = async (lecturerId: string) => {
+    try {
+      const response = await fetch(`/api/stats?lecturerId=${lecturerId}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  const fetchClassStats = async (classId: string) => {
+    try {
+      const response = await fetch(`/api/stats?classId=${classId}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setClassStudentCounts(prev => ({
+          ...prev,
+          [classId]: data.stats.studentCount,
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching class stats:', error);
     }
   };
 
@@ -93,6 +135,8 @@ export default function LecturerDashboard() {
         setClasses([...classes, data.class]);
         setIsDialogOpen(false);
         (e.target as HTMLFormElement).reset();
+        // Refresh stats
+        if (user) fetchStats(user.id);
       } else {
         alert(data.message || 'Failed to create class');
       }
@@ -115,7 +159,7 @@ export default function LecturerDashboard() {
             att.student_id,
             att.class_id,
             att.status,
-            new Date(att.time).toLocaleString(),
+            new Date(att.time).toLocaleString('id-ID'),
             att.location ? `${att.location.latitude}, ${att.location.longitude}` : 'N/A'
           ])
         ].map(row => row.join(',')).join('\n');
@@ -135,14 +179,15 @@ export default function LecturerDashboard() {
     }
   };
 
-  if (!user) {
-    return null;
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
   }
 
-  const todayClasses = classes.filter(cls => {
-    const today = new Date().toLocaleDateString('id-ID', { weekday: 'long' });
-    return cls.schedule.includes(today.charAt(0).toUpperCase() + today.slice(1));
-  });
+  if (!user) return null;
 
   return (
     <LayoutWrapper 
@@ -150,45 +195,46 @@ export default function LecturerDashboard() {
       subtitle={`Selamat datang kembali, ${user.name}`}
       showSearch={true}
     >
+      {/* Stats Cards - Now using real data */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
+        <Card className="shadow-md border-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Kelas</CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
+            <BookOpen className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{classes.length}</div>
-            <p className="text-xs text-muted-foreground">Semester ini</p>
+            <div className="text-2xl font-bold">{stats.totalClasses}</div>
+            <p className="text-xs text-gray-500">Semester ini</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="shadow-md border-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Kelas Hari Ini</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Calendar className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{todayClasses.length}</div>
-            <p className="text-xs text-muted-foreground">Jadwal mengajar</p>
+            <div className="text-2xl font-bold">{stats.todayClasses}</div>
+            <p className="text-xs text-gray-500">Jadwal mengajar</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="shadow-md border-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Mahasiswa</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">42</div>
-            <p className="text-xs text-muted-foreground">Di semua kelas</p>
+            <div className="text-2xl font-bold">{stats.totalStudents}</div>
+            <p className="text-xs text-gray-500">Di semua kelas</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="shadow-md border-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tingkat Kehadiran</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">85%</div>
-            <p className="text-xs text-muted-foreground">Rata-rata bulan ini</p>
+            <div className="text-2xl font-bold">{stats.attendanceRate}%</div>
+            <p className="text-xs text-gray-500">Rata-rata keseluruhan</p>
           </CardContent>
         </Card>
       </div>
@@ -260,7 +306,7 @@ export default function LecturerDashboard() {
                     Batal
                   </Button>
                   <Button type="submit" disabled={isAddingClass}>
-                    Buat Kelas
+                    {isAddingClass ? <LoadingSpinner size="sm" /> : 'Buat Kelas'}
                   </Button>
                 </div>
               </form>
@@ -268,8 +314,20 @@ export default function LecturerDashboard() {
           </Dialog>
         </div>
 
-        {classes.length === 0 ? (
-          <Card>
+        {isLoading ? (
+          <div className="grid gap-6 lg:grid-cols-2">
+            {[...Array(2)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-6">
+                  <div className="h-6 bg-gray-200 rounded mb-4" />
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                  <div className="h-10 bg-gray-200 rounded mt-4" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : classes.length === 0 ? (
+          <Card className="shadow-md border-0">
             <CardContent className="text-center py-12">
               <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Kelas</h3>
@@ -283,54 +341,14 @@ export default function LecturerDashboard() {
         ) : (
           <div className="grid gap-6 lg:grid-cols-2">
             {classes.map((classItem) => (
-              <Card key={classItem.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{classItem.class_name}</CardTitle>
-                      <CardDescription>{classItem.class_code}</CardDescription>
-                    </div>
-                    <Badge variant="outline">{classItem.class_code}</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Clock className="w-4 h-4" />
-                      {classItem.schedule}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Users className="w-4 h-4" />
-                      15 mahasiswa terdaftar
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <MapPin className="w-4 h-4" />
-                      Lokasi Kampus
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={() => router.push(`/lecturer/classes/${classItem.id}`)}
-                      variant="outline" 
-                      size="sm"
-                      className="flex items-center gap-2"
-                    >
-                      <Users className="w-4 h-4" />
-                      Detail Kelas
-                    </Button>
-                    <Button 
-                      onClick={() => handleExportAttendance(classItem.id, classItem.class_name)}
-                      variant="outline" 
-                      size="sm"
-                      className="flex items-center gap-2"
-                    >
-                      <Download className="w-4 h-4" />
-                      Export
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <ClassCard
+                key={classItem.id}
+                classItem={classItem}
+                variant="lecturer"
+                studentCount={classStudentCounts[classItem.id]}
+                showExportButton={true}
+                onExport={() => handleExportAttendance(classItem.id, classItem.class_name)}
+              />
             ))}
           </div>
         )}

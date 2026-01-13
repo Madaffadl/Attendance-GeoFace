@@ -22,12 +22,14 @@ export interface Class {
   schedule: string;
   lecturer_id: string;
   lecturer_name?: string;
+  student_count?: number;
   location: {
     latitude: number;
     longitude: number;
     radius: number; // in meters
   };
 }
+
 
 export interface Attendance {
   id: string;

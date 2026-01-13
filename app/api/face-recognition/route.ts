@@ -1,48 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { mockStudents, mockFaceRecognition, mockActivityLogs } from '@/lib/mockData';
-// Kita tidak lagi menggunakan fungsi simulasi, jadi hapus importnya
+import { getSupabase, logActivity, isSupabaseConfigured } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Database not configured' 
+      }, { status: 503 });
+    }
+
     const body = await request.json();
-    const { student_id, class_id, face_descriptor, face_images } = body;
+    const { student_id, class_id, face_descriptor } = body;
 
     if (!student_id || !class_id || !face_descriptor) {
-      return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 });
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Missing required fields' 
+      }, { status: 400 });
     }
 
-    const student = mockStudents.find(s => s.id === student_id);
-    if (!student) {
-      return NextResponse.json({ success: false, message: 'Student not found' }, { status: 404 });
+    const supabase = getSupabase();
+
+    // Verify student exists
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('*')
+      .eq('id', student_id)
+      .single();
+
+    if (studentError || !student) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Student not found' 
+      }, { status: 404 });
     }
 
-    // Store the face descriptor (processed by face-api.js on client)
-    const faceVector = face_descriptor;
-
-    const existingRegistration = mockFaceRecognition.find(fr => fr.student_id === student_id);
-
-    if (existingRegistration) {
-      existingRegistration.face_vector = faceVector; // Update dengan data baru
-    } else {
-      mockFaceRecognition.push({
-        id: (mockFaceRecognition.length + 1).toString(),
+    // Save or update face data in Supabase
+    const { error: faceError } = await supabase
+      .from('face_data')
+      .upsert({
         student_id,
-        face_vector: faceVector,
-        status: 'Matched',
-        confidence: 0.98
+        face_descriptor,
+        confidence_score: 0.98,
+        photos_count: 5,
+        registered_at: new Date().toISOString()
+      }, { 
+        onConflict: 'student_id' 
       });
+
+    if (faceError) {
+      console.error('Face data save error:', faceError);
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Failed to save face data' 
+      }, { status: 500 });
     }
 
-    const studentIndex = mockStudents.findIndex(s => s.id === student_id);
-    if (studentIndex !== -1) {
-      mockStudents[studentIndex].face_vector = faceVector;
-    }
-
-    mockActivityLogs.push({
-      id: Date.now().toString(),
+    // Log the activity
+    await logActivity({
       student_id,
+      lecturer_id: null,
       activity_type: 'Face_Registration',
-      time: new Date().toISOString(),
       details: `Face registration completed for class ${class_id}`
     });
 
@@ -53,6 +72,9 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Face registration error:', error);
-    return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      success: false, 
+      message: 'Internal server error' 
+    }, { status: 500 });
   }
 }

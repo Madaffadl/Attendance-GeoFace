@@ -1,29 +1,77 @@
 import * as faceapi from 'face-api.js';
 
 let modelsLoaded = false;
+let modelsLoading = false;
+let loadProgress = 0;
 
-// Load face-api.js models
-export async function loadModels(): Promise<void> {
-  if (modelsLoaded) return;
+// Model loading progress callback type
+type ProgressCallback = (progress: number, message: string) => void;
+
+// Get current loading status
+export function getModelsStatus(): { loaded: boolean; loading: boolean; progress: number } {
+  return { loaded: modelsLoaded, loading: modelsLoading, progress: loadProgress };
+}
+
+// Load face-api.js models with progress tracking
+export async function loadModels(onProgress?: ProgressCallback): Promise<void> {
+  if (modelsLoaded) {
+    onProgress?.(100, 'Model sudah dimuat');
+    return;
+  }
+
+  if (modelsLoading) {
+    // Wait for existing load to complete
+    while (modelsLoading) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return;
+  }
+
+  modelsLoading = true;
+  loadProgress = 0;
 
   try {
     const MODEL_URL = '/models';
     
     console.log('Loading face-api.js models...');
-    await Promise.all([
-      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL)
-    ]);
     
+    // Load models one by one for progress tracking
+    onProgress?.(10, 'Memuat model deteksi wajah...');
+    loadProgress = 10;
+    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+    
+    onProgress?.(40, 'Memuat model landmark wajah...');
+    loadProgress = 40;
+    await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+    
+    onProgress?.(80, 'Memuat model pengenalan wajah...');
+    loadProgress = 80;
+    await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+    
+    // Note: ssdMobilenetv1 removed - not needed since we use tinyFaceDetector
+    
+    loadProgress = 100;
     modelsLoaded = true;
+    modelsLoading = false;
+    onProgress?.(100, 'Semua model berhasil dimuat!');
     console.log('Face-api.js models loaded successfully');
   } catch (error) {
     console.error('Error loading face-api.js models:', error);
     modelsLoaded = false;
+    modelsLoading = false;
+    loadProgress = 0;
     throw new Error('Failed to load face recognition models');
   }
+}
+
+// Pre-load models in background (called after login)
+export function preloadModelsInBackground(): void {
+  if (modelsLoaded || modelsLoading) return;
+  
+  console.log('Pre-loading face recognition models in background...');
+  loadModels().catch(err => {
+    console.warn('Background model pre-load failed:', err);
+  });
 }
 
 // Get face descriptor from image data

@@ -20,25 +20,18 @@ import {
   BookOpen,
   Eye,
   Edit,
-  Trash2,
-  Filter
 } from 'lucide-react';
 import { Class } from '@/types';
-import { mockClasses, mockEnrollments } from '@/lib/mockData';
+import { useAuth } from '@/lib/auth-context';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
-interface User {
-  id: string;
-  name: string;
-  userType: string;
-  identifier: string;
-}
-
-export default function ClassesPage() {
-  const [user, setUser] = useState<User | null>(null);
+export default function LecturerClassesPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [classes, setClasses] = useState<Class[]>([]);
   const [filteredClasses, setFilteredClasses] = useState<Class[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddingClass, setIsAddingClass] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState('');
   const [startTime, setStartTime] = useState('');
@@ -46,26 +39,38 @@ export default function ClassesPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is logged in
-    const userData = localStorage.getItem('user');
-    if (!userData) {
+    if (authLoading) return;
+    
+    if (!user) {
       router.push('/login');
       return;
     }
 
-    const parsedUser = JSON.parse(userData);
-    if (parsedUser.userType !== 'lecturer') {
+    if (user.userType !== 'lecturer') {
       router.push('/login');
       return;
     }
 
-    setUser(parsedUser);
-    loadClasses(parsedUser.id);
-  }, [router]);
+    fetchClasses(user.id);
+  }, [user, authLoading, router]);
 
-  const loadClasses = (lecturerId: string) => {
-    const lecturerClasses = mockClasses.filter(cls => cls.lecturer_id === lecturerId);
-    setClasses(lecturerClasses);
+  const fetchClasses = async (lecturerId: string) => {
+    try {
+      console.log('[Lecturer Classes] Fetching classes for lecturer:', lecturerId);
+      const response = await fetch(`/api/classes?lecturerId=${lecturerId}`);
+      const data = await response.json();
+      console.log('[Lecturer Classes] API response:', data);
+      
+      if (data.success) {
+        setClasses(data.classes);
+      } else {
+        console.error('[Lecturer Classes] API error:', data.message);
+      }
+    } catch (error) {
+      console.error('[Lecturer Classes] Fetch error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const filterClasses = useCallback(() => {
@@ -132,11 +137,13 @@ export default function ClassesPage() {
     }
   };
 
-  const getEnrolledStudentsCount = (classId: string) => {
-    return Object.keys(mockEnrollments).filter(studentId => 
-      mockEnrollments[studentId].includes(classId)
-    ).length;
-  };
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
 
   if (!user) {
     return null;
@@ -277,7 +284,7 @@ export default function ClassesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {classes.reduce((total, cls) => total + getEnrolledStudentsCount(cls.id), 0)}
+              {classes.reduce((total, cls) => total + (cls.student_count || 0), 0)}
             </div>
             <p className="text-xs text-muted-foreground">Di semua kelas</p>
           </CardContent>
@@ -289,7 +296,12 @@ export default function ClassesPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2</div>
+            <div className="text-2xl font-bold">
+              {classes.filter(cls => {
+                const today = new Date().toLocaleDateString('id-ID', { weekday: 'long' });
+                return cls.schedule?.toLowerCase().includes(today.toLowerCase());
+              }).length}
+            </div>
             <p className="text-xs text-muted-foreground">Jadwal mengajar</p>
           </CardContent>
         </Card>
@@ -305,6 +317,7 @@ export default function ClassesPage() {
           </CardContent>
         </Card>
       </div>
+
       {/* Search and Filter */}
       <Card className="mb-6">
         <CardHeader>
@@ -329,6 +342,7 @@ export default function ClassesPage() {
           </div>
         </CardContent>
       </Card>
+
       {/* Classes List */}
       <Card>
         <CardHeader>
@@ -348,8 +362,6 @@ export default function ClassesPage() {
           ) : (
             <div className="grid gap-6 lg:grid-cols-2">
               {filteredClasses.map((classItem) => {
-                const enrolledCount = getEnrolledStudentsCount(classItem.id);
-                
                 return (
                   <Card key={classItem.id} className="hover:shadow-lg transition-shadow">
                     <CardHeader>
@@ -369,7 +381,7 @@ export default function ClassesPage() {
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <Users className="w-4 h-4" />
-                          {enrolledCount} mahasiswa terdaftar
+                          {classItem.student_count || 0} mahasiswa terdaftar
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <MapPin className="w-4 h-4" />

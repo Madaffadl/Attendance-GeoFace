@@ -1,38 +1,140 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { mockStudents, mockEnrollments, mockClasses } from '@/lib/mockData';
+import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Database not configured' 
+      }, { status: 503 });
+    }
+
     const { searchParams } = new URL(request.url);
     const lecturerId = searchParams.get('lecturerId');
+    const studentId = searchParams.get('studentId');
 
-    if (lecturerId) {
-      // Dapatkan kelas yang diajar oleh dosen
-      const lecturerClasses = mockClasses.filter(cls => cls.lecturer_id === lecturerId);
-      const lecturerClassIds = lecturerClasses.map(cls => cls.id);
+    const supabase = getSupabase();
 
-      // Dapatkan semua ID mahasiswa yang terdaftar di kelas-kelas tersebut
-      const enrolledStudentIds = new Set<string>();
-      Object.keys(mockEnrollments).forEach(studentId => {
-        const studentClasses = mockEnrollments[studentId];
-        if (studentClasses.some(classId => lecturerClassIds.includes(classId))) {
-          enrolledStudentIds.add(studentId);
+    // Get a single student by ID
+    if (studentId) {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', studentId)
+        .single();
+
+      if (error || !data) {
+        console.error('Student fetch error:', error);
+        return NextResponse.json({
+          success: false,
+          message: 'Student not found'
+        }, { status: 404 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        student: {
+          id: data.id,
+          nim: data.nim,
+          name: data.name,
+          email: data.email,
+          program_study: data.program_study,
+          photo: data.photo
         }
       });
-      
-      const lecturerStudents = mockStudents.filter(student => 
-        enrolledStudentIds.has(student.id)
-      );
-      
-      return NextResponse.json({
-        success: true,
-        students: lecturerStudents
+    }
+
+    if (lecturerId) {
+
+      // Get classes taught by this lecturer
+      const { data: lecturerClasses, error: classError } = await supabase
+        .from('classes')
+        .select('id')
+        .eq('lecturer_id', lecturerId);
+
+      if (classError) {
+        console.error('Classes fetch error:', classError);
+        return NextResponse.json({
+          success: false,
+          message: 'Failed to fetch classes'
+        }, { status: 500 });
+      }
+
+      const lecturerClassIds = lecturerClasses?.map(cls => cls.id) || [];
+
+      if (lecturerClassIds.length === 0) {
+        return NextResponse.json({
+          success: true,
+          students: []
+        });
+      }
+
+      // Get all students enrolled in these classes
+      const { data: enrollments, error: enrollError } = await supabase
+        .from('enrollments')
+        .select(`
+          student_id,
+          students (*)
+        `)
+        .in('class_id', lecturerClassIds);
+
+      if (enrollError) {
+        console.error('Enrollments fetch error:', enrollError);
+        return NextResponse.json({
+          success: false,
+          message: 'Failed to fetch students'
+        }, { status: 500 });
+      }
+
+      // Get unique students
+      const studentsMap = new Map();
+      enrollments?.forEach((enrollment: any) => {
+        const student = enrollment.students;
+        if (student && !studentsMap.has(student.id)) {
+          studentsMap.set(student.id, {
+            id: student.id,
+            nim: student.nim,
+            name: student.name,
+            email: student.email,
+            program_study: student.program_study,
+            photo: student.photo
+          });
+        }
       });
-    } else {
-      // Kembalikan semua mahasiswa
+
       return NextResponse.json({
         success: true,
-        students: mockStudents
+        students: Array.from(studentsMap.values())
+      });
+
+    } else {
+      // Return all students
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .order('name');
+
+      if (error) {
+        console.error('Students fetch error:', error);
+        return NextResponse.json({
+          success: false,
+          message: 'Failed to fetch students'
+        }, { status: 500 });
+      }
+
+      const students = data?.map(student => ({
+        id: student.id,
+        nim: student.nim,
+        name: student.name,
+        email: student.email,
+        program_study: student.program_study,
+        photo: student.photo
+      })) || [];
+
+      return NextResponse.json({
+        success: true,
+        students
       });
     }
   } catch (error) {

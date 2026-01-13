@@ -1,65 +1,95 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { mockStudents, mockLecturers, mockActivityLogs } from '@/lib/mockData';
+import { getSupabase, logActivity, isSupabaseConfigured } from '@/lib/supabase';
 import { LoginRequest } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json({
+        success: false,
+        message: 'Database not configured. Please set up Supabase credentials.'
+      }, { status: 503 });
+    }
+
     const body: LoginRequest = await request.json();
     const { identifier, password, userType } = body;
 
     if (userType === 'student') {
       // Login with NIM only for students
-      const student = mockStudents.find(s => s.nim === identifier);
+      const { data: student, error } = await getSupabase()
+        .from('students')
+        .select('*')
+        .eq('nim', identifier)
+        .single();
       
-      if (student) {
-        // Log the activity
-        const activityLog = {
-          id: Date.now().toString(),
-          student_id: student.id,
-          activity_type: 'Login' as const,
-          time: new Date().toISOString(),
-          details: 'Student logged in successfully'
-        };
-        mockActivityLogs.push(activityLog);
-
+      if (error || !student) {
         return NextResponse.json({
-          success: true,
-          user: {
-            id: student.id,
-            name: student.name,
-            userType: 'student',
-            identifier: student.nim,
-            email: student.email,
-            program_study: student.program_study,
-            photo: student.photo
-          }
-        });
+          success: false,
+          message: 'Student not found'
+        }, { status: 401 });
       }
+
+      // Log the activity
+      await logActivity({
+        student_id: student.id,
+        lecturer_id: null,
+        activity_type: 'Login',
+        details: 'Student logged in successfully'
+      });
+
+      return NextResponse.json({
+        success: true,
+        user: {
+          id: student.id,
+          name: student.name,
+          userType: 'student',
+          identifier: student.nim,
+          email: student.email,
+          program_study: student.program_study,
+          photo: student.photo
+        }
+      });
+
     } else if (userType === 'lecturer') {
       // Login with code and password for lecturers
-      const lecturer = mockLecturers.find(l => l.code === identifier && l.password === password);
+      const { data: lecturer, error } = await getSupabase()
+        .from('lecturers')
+        .select('*')
+        .eq('code', identifier)
+        .single();
       
-      if (lecturer) {
-        // Log the activity
-        const activityLog = {
-          id: Date.now().toString(),
-          lecturer_id: lecturer.id,
-          activity_type: 'Login' as const,
-          time: new Date().toISOString(),
-          details: 'Lecturer logged in successfully'
-        };
-        mockActivityLogs.push(activityLog);
-
+      if (error || !lecturer) {
         return NextResponse.json({
-          success: true,
-          user: {
-            id: lecturer.id,
-            name: lecturer.name,
-            userType: 'lecturer',
-            identifier: lecturer.code
-          }
-        });
+          success: false,
+          message: 'Lecturer not found'
+        }, { status: 401 });
       }
+
+      // Simple password check (in production, use proper hashing!)
+      if (lecturer.password_hash !== password) {
+        return NextResponse.json({
+          success: false,
+          message: 'Invalid password'
+        }, { status: 401 });
+      }
+
+      // Log the activity
+      await logActivity({
+        student_id: null,
+        lecturer_id: lecturer.id,
+        activity_type: 'Login',
+        details: 'Lecturer logged in successfully'
+      });
+
+      return NextResponse.json({
+        success: true,
+        user: {
+          id: lecturer.id,
+          name: lecturer.name,
+          userType: 'lecturer',
+          identifier: lecturer.code
+        }
+      });
     }
 
     return NextResponse.json({

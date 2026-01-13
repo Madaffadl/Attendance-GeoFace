@@ -1,22 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Navigation } from '@/components/ui/navigation';
 import { BreadcrumbNav } from '@/components/ui/breadcrumb-nav';
 import { MobileHeader } from '@/components/ui/mobile-header';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useData } from '@/lib/dataContext';
-
-interface User {
-  id: string;
-  name: string;
-  userType: string;
-  identifier: string;
-  email?: string;
-  program_study?: string;
-  photo?: string;
-}
+import { useAuth } from '@/lib/auth-context';
 
 interface LayoutWrapperProps {
   children: React.ReactNode;
@@ -37,28 +28,17 @@ export function LayoutWrapper({
   showSearch = false,
   breadcrumbItems 
 }: LayoutWrapperProps) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const router = useRouter();
   const { resetToDefaults } = useData();
-
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (!userData) {
-      router.push('/login');
-      return;
-    }
-
-    const parsedUser = JSON.parse(userData);
-    setUser(parsedUser);
-    setIsLoading(false);
-  }, [router]);
+  const { user, isLoading, logout } = useAuth();
 
   const handleLogout = () => {
     // Reset all data to defaults before logout
     resetToDefaults();
-    localStorage.removeItem('user');
+    // Call auth context logout (clears localStorage and state)
+    logout();
+    // Then redirect to login
     router.push('/login');
   };
 
@@ -71,7 +51,13 @@ export function LayoutWrapper({
   }
 
   if (!user) {
-    return null;
+    // Redirect to login if not authenticated
+    router.push('/login');
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
   }
 
   return (

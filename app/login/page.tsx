@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,11 +9,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { GraduationCap, Users } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const { user, login, isLoading: authLoading } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (user.userType === 'student') {
+        router.push('/student/dashboard');
+      } else if (user.userType === 'lecturer') {
+        router.push('/lecturer/dashboard');
+      }
+    }
+  }, [user, authLoading, router]);
 
   const handleStudentLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -38,8 +51,8 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (data.success) {
-        // Store user data in localStorage
-        localStorage.setItem('user', JSON.stringify(data.user));
+        // Use auth context login function
+        login(data.user);
         router.push('/student/dashboard');
       } else {
         setError(data.message || 'Login failed');
@@ -76,8 +89,8 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (data.success) {
-        // Store user data in localStorage
-        localStorage.setItem('user', JSON.stringify(data.user));
+        // Use auth context login function
+        login(data.user);
         router.push('/lecturer/dashboard');
       } else {
         setError(data.message || 'Login failed');
@@ -88,6 +101,15 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  // Show loading if checking auth state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">

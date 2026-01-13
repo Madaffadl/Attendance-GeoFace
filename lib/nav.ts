@@ -109,7 +109,6 @@ export const lecturerNavItems: NavItem[] = [
         label: 'Laporan',
         href: ROUTES.LECTURER.REPORTS,
         icon: BarChart3,
-        badge: 'Baru',
     },
     {
         label: 'Analitik',

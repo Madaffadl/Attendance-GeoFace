@@ -16,33 +16,21 @@ import {
   RefreshCw,
   User,
   Clock,
-  Target,
-  ArrowLeft
+  Loader2
 } from 'lucide-react';
-import { Class, Student } from '@/types';
+import { Class } from '@/types';
 import { getCurrentLocation, LocationCoordinates, validateLocation } from '@/lib/geolocation';
-import { loadModels, captureImageFromVideo, processAttendanceWithFace } from '@/lib/faceRecognition';
-import { mockStudents, mockClasses } from '@/lib/mockData';
-import { getFaceData, hasFaceData, migrateFaceDataFromMock } from '@/lib/faceStorage';
-
-// Interface for logged in user
-interface AuthUser {
-  id: string;
-  name: string;
-  userType: string;
-  identifier: string;
-  email: string;
-  program_study: string;
-  photo: string;
-}
+import { loadModels, captureImageFromVideo, processAttendanceWithFace, getModelsStatus } from '@/lib/faceRecognition';
+import { getFaceData } from '@/lib/faceStorage';
+import { useAuth } from '@/lib/auth-context';
 
 export default function AttendancePage() {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const { user, hasFaceRegistered, modelsReady, isLoading: authLoading } = useAuth();
   const [classData, setClassData] = useState<Class | null>(null);
-  const [studentData, setStudentData] = useState<Student | null>(null);
-  const [modelsLoaded, setModelsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [modelLoadingProgress, setModelLoadingProgress] = useState('');
   const [step, setStep] = useState<'location' | 'camera' | 'processing' | 'success'>('location');
   const [location, setLocation] = useState<LocationCoordinates | null>(null);
   const [locationStatus, setLocationStatus] = useState<'checking' | 'valid' | 'invalid'>('checking');
@@ -57,47 +45,55 @@ export default function AttendancePage() {
   const classId = params.classId as string;
 
   useEffect(() => {
+    if (authLoading) return;
+
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    if (user.userType !== 'student') {
+      router.push('/login');
+      return;
+    }
+
+    // Initialize - fetch class data (don't wait for models)
     const initialize = async () => {
-      const userData = localStorage.getItem('user');
-      if (!userData) {
-        router.push('/login');
-        return;
-      }
-      const parsedUser = JSON.parse(userData) as AuthUser;
-      setUser(parsedUser);
-
       try {
-        setMessage("Memuat model face recognition...");
-        await loadModels();
-        setModelsLoaded(true);
+        // Fetch class data from API
+        console.log('Fetching class data for:', classId);
+        const classResponse = await fetch(`/api/classes?classId=${classId}`);
+        const classResult = await classResponse.json();
+        
+        if (classResult.success && classResult.class) {
+          setClassData(classResult.class);
+        } else {
+          setError('Kelas tidak ditemukan');
+        }
+
       } catch (e) {
-        console.error("Failed to load face recognition models:", e);
-        setError('Gagal memuat model face recognition. Silakan refresh halaman.');
+        console.error("Initialization failed:", e);
+        setError('Gagal memuat data. Silakan refresh halaman.');
+      } finally {
+        setIsLoading(false);
       }
-
-      const foundClass = mockClasses.find((cls: Class) => cls.id === classId);
-      const foundStudent = mockStudents.find((s: Student) => s.id === parsedUser.id);
-
-      // Migrate any existing face data from mock to localStorage
-      migrateFaceDataFromMock(mockStudents);
-
-      if (foundClass) setClassData(foundClass);
-      else setError('Kelas tidak ditemukan');
-
-      if (foundStudent) setStudentData(foundStudent);
-      else setError('Data mahasiswa tidak ditemukan');
-      
-      setIsLoading(false);
     };
 
     initialize();
-  }, [router, classId]);
 
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [user, authLoading, router, classId]);
+
+  // Start location check when class data is ready
   useEffect(() => {
-    if (step === 'location' && modelsLoaded) {
+    if (step === 'location' && classData && !isLoading) {
       checkLocation();
     }
-  }, [step, modelsLoaded]);
+  }, [step, classData, isLoading]);
 
   const checkLocation = async () => {
     if (!classData) return;
@@ -124,7 +120,7 @@ export default function AttendancePage() {
           setLocationStatus('invalid');
           setMessage(locationValidation.message);
         }
-      }, 1500);
+      }, 1000);
       
     } catch (err) {
       console.error('Location check failed:', err);
@@ -135,22 +131,46 @@ export default function AttendancePage() {
 
   const startCamera = async () => {
     try {
+      setCameraReady(false);
+      setStep('camera');
+      setError('');
+      
       // Stop any existing stream first
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
       }
 
+      console.log('Starting camera...');
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
       });
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        videoRef.current.onloadedmetadata = () => {
+          console.log('Camera metadata loaded, playing...');
+          videoRef.current?.play().then(() => {
+            console.log('Camera playing');
+            setCameraReady(true);
+          }).catch(e => {
+            console.error('Camera play failed:', e);
+            setError('Gagal memulai kamera.');
+          });
+        };
         streamRef.current = stream;
       }
-      setStep('camera');
-      setError('');
+
+      // Start loading models in parallel if not ready
+      if (!modelsReady) {
+        console.log('Loading face models...');
+        loadModels((progress, msg) => {
+          setModelLoadingProgress(msg);
+        }).catch(e => {
+          console.error('Model loading failed:', e);
+        });
+      }
+      
     } catch (err) {
       console.error('Camera access failed:', err);
       setError('Gagal mengakses kamera. Pastikan izin kamera diberikan.');
@@ -165,15 +185,34 @@ export default function AttendancePage() {
 
     console.log('Processing attendance for student:', user.id);
     
-    // Check if student has registered face data in persistent storage
-    const faceData = getFaceData(user.id);
-    if (!faceData || !hasFaceData(user.id)) {
-      console.log('Face not registered in persistent storage, redirecting to registration');
+    // Check if student has registered face data
+    if (!hasFaceRegistered) {
+      console.log('Face not registered, redirecting to registration');
       setError("Anda belum mendaftarkan wajah. Silakan daftarkan wajah terlebih dahulu.");
       setTimeout(() => {
-        router.push(`/student/register-face/${classId}`);
+        router.push('/student/face-registration');
       }, 2000);
       return;
+    }
+
+    // Get face data from storage
+    const faceData = getFaceData(user.id);
+    if (!faceData) {
+      setError("Data wajah tidak ditemukan. Silakan daftarkan wajah terlebih dahulu.");
+      setTimeout(() => {
+        router.push('/student/face-registration');
+      }, 2000);
+      return;
+    }
+
+    // Make sure models are loaded before processing
+    const status = getModelsStatus();
+    if (!status.loaded) {
+      setMessage('Menunggu model selesai dimuat...');
+      setModelLoadingProgress('Memuat model...');
+      await loadModels((progress, msg) => {
+        setModelLoadingProgress(msg);
+      });
     }
 
     setStep('processing');
@@ -249,29 +288,22 @@ export default function AttendancePage() {
     checkLocation();
   };
 
-  const handleBack = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
-    router.push('/student/dashboard');
-  };
-
   const handleDone = () => {
     router.push('/student/dashboard');
   };
   
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <LoadingSpinner size="lg" />
-          <p className="mt-4 text-gray-600">
-            {!modelsLoaded ? 'Memuat model face recognition...' : 'Memuat...'}
-          </p>
+          <p className="mt-4 text-gray-600">Memuat data kelas...</p>
         </div>
       </div>
     );
   }
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -294,7 +326,7 @@ export default function AttendancePage() {
               </CardTitle>
               <CardDescription className="flex items-center gap-3 text-base mt-3">
                 <User className="w-5 h-5" />
-                {classData.lecturer_name}
+                {classData.lecturer_name || 'Dosen'}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -343,14 +375,27 @@ export default function AttendancePage() {
                 <div className="text-center">
                   <h3 className="text-2xl font-bold mb-4">Pindai Wajah</h3>
                   <p className="text-gray-600 text-lg">Posisikan wajah Anda di dalam bingkai.</p>
+                  {!modelsReady && modelLoadingProgress && (
+                    <p className="text-blue-600 text-sm mt-2">{modelLoadingProgress}</p>
+                  )}
                 </div>
                 <div className="relative max-w-lg mx-auto">
                   <video 
                     ref={videoRef} 
                     autoPlay 
-                    playsInline 
-                    className="w-full h-80 object-cover rounded-xl bg-black shadow-lg" 
+                    playsInline
+                    muted 
+                    className="w-full h-80 object-cover rounded-xl bg-gray-900 shadow-lg"
+                    style={{ transform: 'scaleX(-1)' }}
                   />
+                  {!cameraReady && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900 rounded-xl">
+                      <div className="text-center text-white">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                        <p>Memuat kamera...</p>
+                      </div>
+                    </div>
+                  )}
                   <div className="absolute inset-0 border-2 border-dashed border-white rounded-xl m-6 flex items-center justify-center">
                     <div className="w-40 h-48 border-3 border-white rounded-full opacity-60" />
                   </div>
@@ -360,7 +405,7 @@ export default function AttendancePage() {
                     onClick={processAttendanceFlow} 
                     size="lg"
                     className="flex items-center gap-3 px-8 py-4 text-lg font-semibold shadow-lg" 
-                    disabled={isProcessing}
+                    disabled={isProcessing || !cameraReady}
                   >
                     {isProcessing ? (
                       <LoadingSpinner size="sm" />
@@ -381,6 +426,9 @@ export default function AttendancePage() {
                 <div>
                   <h3 className="text-2xl font-bold mb-4">Memproses Absensi</h3>
                   <p className="text-gray-600 text-lg">{message}</p>
+                  {modelLoadingProgress && (
+                    <p className="text-blue-600 text-sm mt-2">{modelLoadingProgress}</p>
+                  )}
                   <div className="mt-6 max-w-md mx-auto bg-gray-200 rounded-full h-3">
                     <div className="bg-gradient-to-r from-blue-600 to-indigo-600 h-3 rounded-full animate-pulse" style={{width: '75%'}}></div>
                   </div>
