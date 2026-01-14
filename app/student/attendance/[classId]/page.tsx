@@ -21,8 +21,16 @@ import {
 import { Class } from '@/types';
 import { getCurrentLocation, LocationCoordinates, validateLocation } from '@/lib/geolocation';
 import { loadModels, captureImageFromVideo, processAttendanceWithFace, getModelsStatus } from '@/lib/faceRecognition';
-import { getFaceData } from '@/lib/faceStorage';
+import { getFaceDataWithFallback } from '@/lib/faceStorage';
 import { useAuth } from '@/lib/auth-context';
+import { 
+  createInitialLivenessState, 
+  processChallengeFrame, 
+  detectFaceWithLandmarks, 
+  getLivenessStatusMessage,
+  LivenessState,
+  LivenessChallenge
+} from '@/lib/livenessDetection';
 
 export default function AttendancePage() {
   const { user, hasFaceRegistered, modelsReady, isLoading: authLoading } = useAuth();
@@ -31,12 +39,14 @@ export default function AttendancePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [modelLoadingProgress, setModelLoadingProgress] = useState('');
-  const [step, setStep] = useState<'location' | 'camera' | 'processing' | 'success'>('location');
+  const [step, setStep] = useState<'location' | 'liveness' | 'camera' | 'processing' | 'success'>('location');
   const [location, setLocation] = useState<LocationCoordinates | null>(null);
   const [locationStatus, setLocationStatus] = useState<'checking' | 'valid' | 'invalid'>('checking');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [faceAccuracy, setFaceAccuracy] = useState<number | null>(null);
+  const [livenessState, setLivenessState] = useState<LivenessState>(createInitialLivenessState());
+  const livenessIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -85,6 +95,9 @@ export default function AttendancePage() {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
       }
+      if (livenessIntervalRef.current) {
+        clearInterval(livenessIntervalRef.current);
+      }
     };
   }, [user, authLoading, router, classId]);
 
@@ -94,6 +107,16 @@ export default function AttendancePage() {
       checkLocation();
     }
   }, [step, classData, isLoading]);
+
+  // Reattach video stream when step changes to 'camera' (after liveness)
+  useEffect(() => {
+    if (step === 'camera' && streamRef.current && videoRef.current) {
+      console.log('[Camera] Reattaching stream after step change');
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(e => console.warn('[Camera] Play error:', e));
+      setCameraReady(true);
+    }
+  }, [step]);
 
   const checkLocation = async () => {
     if (!classData) return;
@@ -143,7 +166,7 @@ export default function AttendancePage() {
 
       console.log('Starting camera...');
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
       });
       
       if (videoRef.current) {
@@ -176,6 +199,101 @@ export default function AttendancePage() {
       setError('Gagal mengakses kamera. Pastikan izin kamera diberikan.');
     }
   };
+
+  // Start liveness detection (blink check)
+  const startLivenessCheck = async () => {
+    try {
+      setError('');
+      setCameraReady(false);
+      setStep('liveness');
+      setLivenessState(createInitialLivenessState());
+      
+      // Stop any existing stream first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      
+      // Clear any existing interval
+      if (livenessIntervalRef.current) {
+        clearInterval(livenessIntervalRef.current);
+      }
+
+      console.log('[Liveness] Starting liveness check...');
+      
+      // Ensure models are loaded first
+      if (!modelsReady) {
+        setMessage('Memuat model pengenalan wajah...');
+        await loadModels((progress, msg) => {
+          setModelLoadingProgress(msg);
+        });
+      }
+
+      // Start camera
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+      });
+      
+      streamRef.current = stream;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        
+        await new Promise<void>((resolve) => {
+          const video = videoRef.current!;
+          if (video.readyState >= 2) {
+            resolve();
+            return;
+          }
+          video.onloadedmetadata = () => {
+            video.play().then(() => resolve());
+          };
+        });
+        
+        setCameraReady(true);
+        setMessage('Kedipkan mata Anda 2 kali');
+        console.log('[Liveness] Camera ready, starting blink detection...');
+        
+        // Start blink detection loop
+        let currentState = createInitialLivenessState();
+        
+        livenessIntervalRef.current = setInterval(async () => {
+          if (!videoRef.current || currentState.isComplete) return;
+          
+          const landmarks = await detectFaceWithLandmarks(videoRef.current);
+          
+          if (landmarks) {
+            const newState = processChallengeFrame(landmarks, currentState);
+            currentState = newState;
+            setLivenessState(newState);
+            
+            if (newState.isComplete) {
+              console.log('[Liveness] Liveness check passed!');
+              if (livenessIntervalRef.current) {
+                clearInterval(livenessIntervalRef.current);
+              }
+              // Move to camera step after a short delay
+              // Keep camera running - stream is already active
+              setTimeout(() => {
+                setStep('camera');
+                setMessage('');
+                // Re-ensure video is playing after step change
+                if (videoRef.current && streamRef.current) {
+                  videoRef.current.srcObject = streamRef.current;
+                  videoRef.current.play().catch(e => console.warn('Video play:', e));
+                }
+              }, 500);
+            }
+          }
+        }, 150); // Check every 150ms
+      }
+      
+    } catch (err) {
+      console.error('[Liveness] Error:', err);
+      setError('Gagal memulai verifikasi liveness. Pastikan izin kamera diberikan.');
+      setStep('location');
+    }
+  };
   
   const processAttendanceFlow = async () => {
     if (!user || !location) {
@@ -195,8 +313,8 @@ export default function AttendancePage() {
       return;
     }
 
-    // Get face data from storage
-    const faceData = getFaceData(user.id);
+    // Get face data from storage (server first, then localStorage)
+    const faceData = await getFaceDataWithFallback(user.id);
     if (!faceData) {
       setError("Data wajah tidak ditemukan. Silakan daftarkan wajah terlebih dahulu.");
       setTimeout(() => {
@@ -204,6 +322,11 @@ export default function AttendancePage() {
       }, 2000);
       return;
     }
+    
+    console.log('Face data retrieved:', { 
+      descriptorLength: faceData.face_descriptor?.length,
+      registrationDate: faceData.registration_date 
+    });
 
     // Make sure models are loaded before processing
     const status = getModelsStatus();
@@ -357,8 +480,8 @@ export default function AttendancePage() {
                   <p className="text-gray-600 text-lg">{message || error}</p>
                 </div>
                 {locationStatus === 'valid' && (
-                  <Button onClick={startCamera} size="lg" className="px-8 py-4 text-lg font-semibold shadow-lg">
-                    Lanjutkan ke Pindai Wajah
+                  <Button onClick={startLivenessCheck} size="lg" className="px-8 py-4 text-lg font-semibold shadow-lg">
+                    Lanjutkan ke Verifikasi Wajah
                   </Button>
                 )}
                 {locationStatus === 'invalid' && (
@@ -366,6 +489,75 @@ export default function AttendancePage() {
                     <RefreshCw className="w-4 h-4" />
                     Coba Lagi
                   </Button>
+                )}
+              </div>
+            )}
+
+            {step === 'liveness' && (
+              <div className="space-y-8">
+                <div className="text-center">
+                  <h3 className="text-2xl font-bold mb-4">Verifikasi Liveness</h3>
+                  <p className="text-gray-600 text-lg">{getLivenessStatusMessage(livenessState)}</p>
+                  {modelLoadingProgress && !modelsReady && (
+                    <p className="text-blue-600 text-sm mt-2">{modelLoadingProgress}</p>
+                  )}
+                </div>
+                <div className="relative max-w-lg mx-auto">
+                  <video 
+                    ref={videoRef} 
+                    autoPlay 
+                    playsInline
+                    muted 
+                    className="w-full h-80 object-cover rounded-xl bg-gray-900 shadow-lg"
+                    style={{ transform: 'scaleX(-1)' }}
+                  />
+                  {!cameraReady && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900 rounded-xl">
+                      <div className="text-center text-white">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                        <p>Memuat kamera...</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 border-2 border-dashed border-white rounded-xl m-6 flex items-center justify-center">
+                    <div className="w-40 h-48 border-3 border-white rounded-full opacity-60" />
+                  </div>
+                </div>
+                {/* Challenge Display */}
+                <div className="flex flex-col items-center justify-center gap-6">
+                  {/* Progress Indicator */}
+                  <div className="flex gap-2">
+                    {livenessState.challenges.map((challenge: LivenessChallenge, idx: number) => (
+                      <div 
+                        key={challenge.id}
+                        className={`h-2 w-16 rounded-full transition-all ${
+                          idx < livenessState.currentChallengeIndex || (idx === livenessState.currentChallengeIndex && challenge.isComplete)
+                            ? 'bg-green-500' 
+                            : idx === livenessState.currentChallengeIndex 
+                              ? 'bg-blue-500 animate-pulse' 
+                              : 'bg-gray-200'
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Current Activity Card */}
+                  <div className="bg-white p-6 rounded-2xl shadow-lg border-2 border-blue-100 flex flex-col items-center animate-in fade-in zoom-in duration-300">
+                    <span className="text-6xl mb-4 animate-bounce">
+                      {livenessState.challenges[livenessState.currentChallengeIndex].icon}
+                    </span>
+                    <h4 className="text-2xl font-bold text-gray-800 text-center">
+                      {livenessState.challenges[livenessState.currentChallengeIndex].label}
+                    </h4>
+                    <p className="text-gray-500 mt-2 text-sm">
+                      {livenessState.currentChallengeIndex + 1} dari {livenessState.challenges.length} Tantangan
+                    </p>
+                  </div>
+                </div>
+                {livenessState.isComplete && (
+                  <div className="text-center">
+                    <p className="text-green-600 font-semibold text-lg">✓ Verifikasi berhasil! Melanjutkan...</p>
+                  </div>
                 )}
               </div>
             )}
@@ -396,8 +588,38 @@ export default function AttendancePage() {
                       </div>
                     </div>
                   )}
-                  <div className="absolute inset-0 border-2 border-dashed border-white rounded-xl m-6 flex items-center justify-center">
-                    <div className="w-40 h-48 border-3 border-white rounded-full opacity-60" />
+                  {/* Face guide overlay with background mask */}
+                  <div className="absolute inset-0 pointer-events-none rounded-xl overflow-hidden">
+                    {/* Semi-transparent overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      {/* Top mask */}
+                      <div className="absolute top-0 left-0 right-0 h-[15%] bg-black/50" />
+                      {/* Bottom mask */}
+                      <div className="absolute bottom-0 left-0 right-0 h-[15%] bg-black/50" />
+                      {/* Left mask */}
+                      <div className="absolute left-0 top-[15%] bottom-[15%] w-[20%] bg-black/50" />
+                      {/* Right mask */}
+                      <div className="absolute right-0 top-[15%] bottom-[15%] w-[20%] bg-black/50" />
+                    </div>
+                    
+                    {/* Face oval guide */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="relative">
+                        <div className="w-44 h-56 border-4 border-green-400 rounded-[50%] shadow-[0_0_0_4px_rgba(34,197,94,0.3)]" />
+                        {/* Corner guides */}
+                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-green-400 rounded" />
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-green-400 rounded" />
+                        <div className="absolute top-1/2 -left-2 -translate-y-1/2 w-1 h-8 bg-green-400 rounded" />
+                        <div className="absolute top-1/2 -right-2 -translate-y-1/2 w-1 h-8 bg-green-400 rounded" />
+                      </div>
+                    </div>
+                    
+                    {/* Instructions text */}
+                    <div className="absolute bottom-4 left-0 right-0 text-center">
+                      <span className="bg-black/70 text-white px-4 py-2 rounded-full text-sm font-medium">
+                        Posisikan wajah di dalam oval
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div className="text-center">

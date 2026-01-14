@@ -12,16 +12,20 @@ import { Camera, CheckCircle, AlertCircle, RefreshCw, Info, Loader2, Save } from
 import { ROUTES } from '@/lib/routes';
 import { useAuth } from '@/lib/auth-context';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { loadModels, processMultipleFaceImages, descriptorToString, descriptorsToString, getModelsStatus, validateImageQuality } from '@/lib/faceRecognition';
 
 export default function FaceRegistrationPage() {
-  const { user, hasFaceRegistered, isLoading: authLoading, refreshFaceStatus } = useAuth();
+  const { user, hasFaceRegistered, isLoading: authLoading, refreshFaceStatus, modelsReady } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
   const [saveProgress, setSaveProgress] = useState(0);
   const [saveStatus, setSaveStatus] = useState('');
   const [capturedImages, setCapturedImages] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
+  const [modelLoadingProgress, setModelLoadingProgress] = useState('');
   const [step, setStep] = useState<'instructions' | 'capture' | 'saving' | 'complete'>('instructions');
+  const [debugValues, setDebugValues] = useState<{ pitch: number; yaw: number; sharpness: number; direction: string } | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const router = useRouter();
@@ -44,61 +48,137 @@ export default function FaceRegistrationPage() {
     };
   }, [user, authLoading, router]);
 
+  // Preload models as soon as page loads
+  useEffect(() => {
+    if (!modelsReady) {
+      console.log('[FaceRegistration] Preloading models...');
+      loadModels((progress, msg) => {
+        setModelLoadingProgress(msg);
+      }).catch(err => {
+        console.warn('Model preload failed:', err);
+      });
+    }
+  }, [modelsReady]);
+
   const startCamera = async () => {
     try {
       setError(null);
       setCameraReady(false);
+      setStep('capture');
       
+      console.log('[Camera] Requesting camera access...');
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 640, height: 480 },
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
       });
       
+      console.log('[Camera] Stream obtained:', stream.active);
       streamRef.current = stream;
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
-          setCameraReady(true);
-          console.log('Camera ready');
-        };
+        
+        // Use Promise with timeout for reliable initialization
+        const initCamera = new Promise<void>((resolve, reject) => {
+          const video = videoRef.current!;
+          
+          // Check if already ready (readyState >= 2 means HAVE_CURRENT_DATA)
+          if (video.readyState >= 2) {
+            console.log('[Camera] Video already ready');
+            resolve();
+            return;
+          }
+          
+          const timeout = setTimeout(() => {
+            console.warn('[Camera] Initialization timeout, forcing ready');
+            resolve(); // Force resolve after timeout
+          }, 5000);
+          
+          const handleMetadata = () => {
+            console.log('[Camera] Metadata loaded');
+            clearTimeout(timeout);
+            video.removeEventListener('loadedmetadata', handleMetadata);
+            video.removeEventListener('loadeddata', handleMetadata);
+            resolve();
+          };
+          
+          const handleError = (e: Event) => {
+            console.error('[Camera] Video error:', e);
+            clearTimeout(timeout);
+            reject(new Error('Video element error'));
+          };
+          
+          video.addEventListener('loadedmetadata', handleMetadata);
+          video.addEventListener('loadeddata', handleMetadata);
+          video.addEventListener('error', handleError);
+        });
+        
+        await initCamera;
+        
+        // Play the video
+        try {
+          await videoRef.current.play();
+          console.log('[Camera] Video playing');
+        } catch (playError) {
+          console.warn('[Camera] Autoplay failed, user interaction may be needed');
+        }
+        
+        setCameraReady(true);
+        console.log('[Camera] Camera fully ready');
+      } else {
+        throw new Error('Video element not found');
       }
-      
-      setStep('capture');
     } catch (err) {
-      console.error('Camera error:', err);
-      setError('Tidak dapat mengakses kamera. Pastikan Anda memberikan izin akses kamera.');
+      console.error('[Camera] Error:', err);
+      setError('Tidak dapat mengakses kamera. Pastikan Anda memberikan izin akses kamera dan tidak ada aplikasi lain yang menggunakan kamera.');
+      setStep('instructions');
     }
   };
 
-  const captureImage = () => {
-    if (!videoRef.current || !cameraReady) {
-      setError('Kamera belum siap. Silakan tunggu sebentar.');
+  const captureImage = async () => {
+    if (!videoRef.current || !cameraReady || isValidating) {
+      if (!cameraReady) setError('Kamera belum siap. Silakan tunggu sebentar.');
       return;
     }
 
     const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth || 640;
-    canvas.height = videoRef.current.videoHeight || 480;
+    canvas.width = videoRef.current.videoWidth || 1280;
+    canvas.height = videoRef.current.videoHeight || 720;
     const ctx = canvas.getContext('2d');
 
     if (ctx) {
       ctx.drawImage(videoRef.current, 0, 0);
-      const imageData = canvas.toDataURL('image/jpeg', 0.8);
+      const imageData = canvas.toDataURL('image/jpeg', 1.0);  // Max quality
+      
+      // Start Validation
+      setIsValidating(true);
+      setError(null);
+      
+      const validation = await validateImageQuality(imageData, capturedImages.length);
+      
+      if (!validation.isValid) {
+        setError(validation.message);
+        setDebugValues(validation.debugValues || null);
+        setIsValidating(false);
+        return;
+      }
+      
+      setDebugValues(null);
       
       const newImages = [...capturedImages, imageData];
       setCapturedImages(newImages);
-      console.log(`Captured image ${newImages.length}/5`);
+      console.log(`Captured image ${newImages.length}/8`);
+      
+      setIsValidating(false);
 
-      // Auto-complete when we have 5 images
-      if (newImages.length >= 5) {
+      // Auto-complete when we have 8 images
+      if (newImages.length >= 8) {
         handleComplete(newImages);
       }
     }
   };
 
   const handleComplete = async (images: string[]) => {
-    if (!user || images.length < 5) return;
+    if (!user || images.length < 8) return;
     
     // Stop camera first
     if (streamRef.current) {
@@ -112,18 +192,33 @@ export default function FaceRegistrationPage() {
     setSaveStatus('Mempersiapkan data...');
 
     try {
-      // Create face descriptor from images
-      setSaveProgress(30);
-      setSaveStatus('Memproses foto wajah...');
-      
-      const faceDescriptor = JSON.stringify({ 
-        images: images, 
-        timestamp: Date.now() 
+      // Load face-api models first
+      setSaveProgress(20);
+      setSaveStatus('Memuat model pengenalan wajah...');
+      await loadModels((progress, msg) => {
+        setSaveStatus(msg);
       });
 
-      // Simulate progress
-      await new Promise(r => setTimeout(r, 500));
-      setSaveProgress(50);
+      // Process images to create face descriptor
+      setSaveProgress(40);
+      setSaveStatus('Memproses foto wajah...');
+      
+      const faceResult = await processMultipleFaceImages(images);
+      
+      if (!faceResult.success || !faceResult.averageDescriptor || !faceResult.allDescriptors) {
+        setError(faceResult.message);
+        setStep('capture');
+        setCapturedImages([]);
+        startCamera();
+        return;
+      }
+
+      // Convert all descriptors to string for storage (best-match strategy)
+      // Format: individual descriptors separated by | for best-match comparison
+      const faceDescriptor = descriptorsToString(faceResult.allDescriptors);
+      console.log('Face descriptors computed, count:', faceResult.allDescriptors.length, 'total length:', faceDescriptor.length);
+
+      setSaveProgress(60);
       setSaveStatus('Mengunggah ke server...');
 
       // Save to Supabase via API
@@ -275,8 +370,8 @@ export default function FaceRegistrationPage() {
               <div className="flex items-start gap-3 rounded-lg border p-4">
                 <Badge variant="secondary" className="h-6 w-6 justify-center rounded-full p-0">4</Badge>
                 <div>
-                  <p className="font-medium">5 Foto Diperlukan</p>
-                  <p className="text-sm text-muted-foreground">Sistem akan mengambil 5 foto dari berbagai sudut.</p>
+                  <p className="font-medium">8 Foto Diperlukan</p>
+                  <p className="text-sm text-muted-foreground">Sistem akan mengambil 8 foto dari berbagai sudut.</p>
                 </div>
               </div>
             </div>
@@ -287,6 +382,23 @@ export default function FaceRegistrationPage() {
                 Data wajah Anda disimpan dengan aman dan hanya digunakan untuk verifikasi kehadiran.
               </AlertDescription>
             </Alert>
+
+            {/* Model loading indicator */}
+            {!modelsReady && modelLoadingProgress && (
+              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium text-blue-800">Mempersiapkan sistem...</p>
+                  <p className="text-xs text-blue-600">{modelLoadingProgress}</p>
+                </div>
+              </div>
+            )}
+            {modelsReady && (
+              <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <p className="text-sm font-medium text-green-800">Sistem siap digunakan</p>
+              </div>
+            )}
 
             <Button onClick={startCamera} className="w-full" size="lg">
               <Camera className="mr-2 h-5 w-5" />
@@ -306,15 +418,29 @@ export default function FaceRegistrationPage() {
                 {capturedImages.length} / 5
               </Badge>
             </CardTitle>
-            <CardDescription>
-              Ambil 5 foto wajah Anda dari sudut yang sedikit berbeda
+            <CardDescription className="text-base">
+              {capturedImages.length === 0 && '📸 Foto 1: Hadap DEPAN - Lihat langsung ke kamera'}
+              {capturedImages.length === 1 && '👈 Foto 2: Sedikit ke KIRI - Putar kepala sedikit ke kiri'}
+              {capturedImages.length === 2 && '👉 Foto 3: Sedikit ke KANAN - Putar kepala sedikit ke kanan'}
+              {capturedImages.length === 3 && '👆 Foto 4: Sedikit ke ATAS - Angkat dagu sedikit'}
+              {capturedImages.length === 4 && '👇 Foto 5: Sedikit ke BAWAH - Tundukkan kepala sedikit'}
+              {capturedImages.length === 5 && '📸 Foto 6: Hadap DEPAN - Lihat langsung ke kamera'}
+              {capturedImages.length === 6 && '😄 Foto 7: SENYUM - Tersenyum natural'}
+              {capturedImages.length === 7 && '😐 Foto 8: NETRAL - Ekspresi normal'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>
+                  {error}
+                  {debugValues && (
+                    <div className="mt-2 text-xs font-mono bg-black/10 p-2 rounded">
+                      Debug: Pitch {debugValues.pitch.toFixed(2)} | Yaw {debugValues.yaw.toFixed(2)} | {debugValues.direction}
+                    </div>
+                  )}
+                </AlertDescription>
               </Alert>
             )}
 
@@ -336,9 +462,49 @@ export default function FaceRegistrationPage() {
                   </div>
                 </div>
               )}
-              {/* Face guide overlay */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-48 h-60 border-4 border-dashed border-blue-400 rounded-full opacity-70" />
+              {/* Face guide overlay with background mask */}
+              <div className="absolute inset-0 pointer-events-none">
+                {/* Semi-transparent overlay with face cutout */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  {/* Top mask */}
+                  <div className="absolute top-0 left-0 right-0 h-[15%] bg-black/50" />
+                  {/* Bottom mask */}
+                  <div className="absolute bottom-0 left-0 right-0 h-[15%] bg-black/50" />
+                  {/* Left mask */}
+                  <div className="absolute left-0 top-[15%] bottom-[15%] w-[20%] bg-black/50" />
+                  {/* Right mask */}
+                  <div className="absolute right-0 top-[15%] bottom-[15%] w-[20%] bg-black/50" />
+                </div>
+                
+                {/* Face oval guide */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="relative">
+                    <div className="w-64 h-80 border-4 border-blue-400 rounded-[50%] shadow-[0_0_0_4px_rgba(59,130,246,0.3)]" />
+                    {/* Corner guides */}
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-blue-400 rounded" />
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-blue-400 rounded" />
+                    <div className="absolute top-1/2 -left-2 -translate-y-1/2 w-1 h-8 bg-blue-400 rounded" />
+                    <div className="absolute top-1/2 -right-2 -translate-y-1/2 w-1 h-8 bg-blue-400 rounded" />
+                    {/* Direction arrow */}
+                    <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 text-3xl">
+                      {capturedImages.length === 0 && '⬇️'}
+                      {capturedImages.length === 1 && '⬅️'}
+                      {capturedImages.length === 2 && '➡️'}
+                      {capturedImages.length === 3 && '⬆️'}
+                      {capturedImages.length === 4 && '⬇️'}
+                      {capturedImages.length === 5 && '📸'}
+                      {capturedImages.length === 6 && '😄'}
+                      {capturedImages.length === 7 && '😐'}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Instructions text */}
+                <div className="absolute bottom-4 left-0 right-0 text-center">
+                  <span className="bg-black/70 text-white px-4 py-2 rounded-full text-sm font-medium">
+                    Posisikan wajah di dalam oval
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -346,37 +512,55 @@ export default function FaceRegistrationPage() {
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-gray-700">Progress Pengambilan Foto</span>
-                <span className="text-sm font-bold text-blue-600">{capturedImages.length * 20}%</span>
+                <span className="text-sm font-bold text-blue-600">{Math.round(capturedImages.length * 12.5)}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300 ease-out flex items-center justify-end pr-2"
-                  style={{ width: `${capturedImages.length * 20}%` }}
+                  style={{ width: `${capturedImages.length * 12.5}%` }}
                 >
                   {capturedImages.length > 0 && (
-                    <span className="text-xs font-bold text-white">{capturedImages.length}/5</span>
+                    <span className="text-xs font-bold text-white">{capturedImages.length}/8</span>
                   )}
                 </div>
               </div>
               
-              {/* Photo indicators */}
-              <div className="flex justify-center gap-3">
-                {[1, 2, 3, 4, 5].map((num) => (
+              {/* Photo indicators with pose labels */}
+              <div className="flex justify-center gap-2 flex-wrap">
+                {[
+                  { num: 1, label: 'Depan' },
+                  { num: 2, label: 'Kiri' },
+                  { num: 3, label: 'Kanan' },
+                  { num: 4, label: 'Atas' },
+                  { num: 5, label: 'Bawah' },
+                  { num: 6, label: 'Depan' },
+                  { num: 7, label: 'Senyum' },
+                  { num: 8, label: 'Netral' }
+                ].map(({ num, label }) => (
                   <div
                     key={num}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
-                      num <= capturedImages.length 
-                        ? 'bg-green-500 text-white scale-110' 
-                        : num === capturedImages.length + 1
-                          ? 'bg-blue-500 text-white animate-pulse'
-                          : 'bg-gray-200 text-gray-500'
-                    }`}
+                    className="flex flex-col items-center gap-1"
                   >
-                    {num <= capturedImages.length ? (
-                      <CheckCircle className="w-5 h-5" />
-                    ) : (
-                      num
-                    )}
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
+                        num <= capturedImages.length 
+                          ? 'bg-green-500 text-white scale-110' 
+                          : num === capturedImages.length + 1
+                            ? 'bg-blue-500 text-white animate-pulse'
+                            : 'bg-gray-200 text-gray-500'
+                      }`}
+                    >
+                      {num <= capturedImages.length ? (
+                        <CheckCircle className="w-5 h-5" />
+                      ) : (
+                        num
+                      )}
+                    </div>
+                    <span className={`text-xs ${
+                      num === capturedImages.length + 1 ? 'text-blue-600 font-semibold' : 'text-gray-500'
+                    }`}>
+                      {label}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -391,10 +575,19 @@ export default function FaceRegistrationPage() {
                 onClick={captureImage} 
                 className="flex-[2]" 
                 size="lg" 
-                disabled={!cameraReady || isSaving}
+                disabled={!cameraReady || isSaving || isValidating}
               >
-                <Camera className="mr-2 h-5 w-5" />
-                Ambil Foto {capturedImages.length + 1}
+                {isValidating ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Memvalidasi...
+                  </>
+                ) : (
+                  <>
+                    <Camera className="mr-2 h-5 w-5" />
+                    Ambil Foto {capturedImages.length + 1}
+                  </>
+                )}
               </Button>
             </div>
           </CardContent>

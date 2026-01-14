@@ -221,3 +221,54 @@ export async function GET(request: NextRequest) {
     }, { status: 500 });
   }
 }
+
+// DELETE - Remove attendance records for a student (for testing)
+export async function DELETE(request: NextRequest) {
+  try {
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Database not configured' 
+      }, { status: 503 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const studentId = searchParams.get('studentId');
+
+    if (!studentId) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Student ID is required' 
+      }, { status: 400 });
+    }
+
+    const supabase = getSupabase();
+
+    const { error } = await supabase
+      .from('attendance')
+      .delete()
+      .eq('student_id', studentId);
+
+    if (error) {
+      console.error('Attendance delete error:', error);
+      return NextResponse.json({
+        success: false,
+        message: 'Failed to delete attendance data'
+      }, { status: 500 });
+    }
+
+    console.log(`Attendance data deleted for student: ${studentId}`);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Attendance data deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Attendance delete error:', error);
+    return NextResponse.json({
+      success: false,
+      message: 'Internal server error'
+    }, { status: 500 });
+  }
+}

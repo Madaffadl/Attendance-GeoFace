@@ -9,7 +9,8 @@ import { FaceRegistrationAlert } from '@/components/ui/face-registration-alert';
 import { ClassCard } from '@/components/ui/class-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, User, BookOpen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar, User, BookOpen, Trash2, AlertTriangle } from 'lucide-react';
 import { Class } from '@/types';
 import { useAuth } from '@/lib/auth-context';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -48,6 +49,61 @@ export default function StudentDashboard() {
       console.error('Error fetching classes:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Testing functions
+  const [testingMessage, setTestingMessage] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const deleteFaceData = async () => {
+    if (!user) return;
+    if (!confirm('Yakin ingin menghapus data wajah? Anda harus register ulang.')) return;
+    
+    setIsDeleting(true);
+    setTestingMessage('Menghapus data wajah...');
+    
+    try {
+      // Delete from Supabase
+      const response = await fetch(`/api/face-registration?studentId=${user.id}`, {
+        method: 'DELETE',
+      });
+      
+      // Clear localStorage
+      localStorage.removeItem('attendance_face_data');
+      
+      // Refresh face status
+      await refreshFaceStatus();
+      
+      setTestingMessage('✓ Data wajah berhasil dihapus!');
+      setTimeout(() => setTestingMessage(''), 3000);
+    } catch (error) {
+      console.error('Error deleting face data:', error);
+      setTestingMessage('✗ Gagal menghapus data wajah');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const deleteAttendanceData = async () => {
+    if (!user) return;
+    if (!confirm('Yakin ingin menghapus semua data absensi Anda?')) return;
+    
+    setIsDeleting(true);
+    setTestingMessage('Menghapus data absensi...');
+    
+    try {
+      const response = await fetch(`/api/attendance?studentId=${user.id}`, {
+        method: 'DELETE',
+      });
+      
+      setTestingMessage('✓ Data absensi berhasil dihapus!');
+      setTimeout(() => setTestingMessage(''), 3000);
+    } catch (error) {
+      console.error('Error deleting attendance data:', error);
+      setTestingMessage('✗ Gagal menghapus data absensi');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -180,6 +236,54 @@ export default function StudentDashboard() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Testing Section - Development Only */}
+      <div className="mt-8 pt-8 border-t border-dashed border-yellow-400">
+        <Card className="border-2 border-dashed border-yellow-400 bg-yellow-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-yellow-700">
+              <AlertTriangle className="h-5 w-5" />
+              Testing Tools (Development)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-yellow-700">
+              Tombol ini hanya untuk testing. Gunakan dengan hati-hati.
+            </p>
+            
+            {testingMessage && (
+              <div className={`p-3 rounded-lg text-sm font-medium ${
+                testingMessage.includes('✓') ? 'bg-green-100 text-green-700' : 
+                testingMessage.includes('✗') ? 'bg-red-100 text-red-700' : 
+                'bg-blue-100 text-blue-700'
+              }`}>
+                {testingMessage}
+              </div>
+            )}
+            
+            <div className="flex flex-wrap gap-3">
+              <Button 
+                variant="outline" 
+                onClick={deleteFaceData}
+                disabled={isDeleting}
+                className="border-red-300 text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Hapus Data Wajah
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={deleteAttendanceData}
+                disabled={isDeleting}
+                className="border-red-300 text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Hapus Data Absensi
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </LayoutWrapper>
   );

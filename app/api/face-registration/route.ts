@@ -11,12 +11,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { student_id, class_id, face_descriptor } = body;
+    // Support both camelCase (from client) and snake_case
+    const student_id = body.studentId || body.student_id;
+    const face_descriptor = body.faceDescriptor || body.face_descriptor;
+    const confidence_score = body.confidenceScore || body.confidence_score || 0.95;
+    const photos_count = body.photosCount || body.photos_count || 5;
 
-    if (!student_id || !class_id || !face_descriptor) {
+    if (!student_id || !face_descriptor) {
       return NextResponse.json({ 
         success: false, 
-        message: 'Data tidak lengkap' 
+        message: 'Data tidak lengkap (student_id dan face_descriptor diperlukan)' 
       }, { status: 400 });
     }
 
@@ -62,7 +66,7 @@ export async function POST(request: NextRequest) {
       student_id,
       lecturer_id: null,
       activity_type: 'Face_Registration',
-      details: `Face registration completed for class ${class_id}`
+      details: `Face registration completed for student ${student_id}`
     });
 
     return NextResponse.json({
@@ -135,6 +139,57 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Face data fetch error:', error);
+    return NextResponse.json({
+      success: false,
+      message: 'Internal server error'
+    }, { status: 500 });
+  }
+}
+
+// DELETE - Remove face data for a student
+export async function DELETE(request: NextRequest) {
+  try {
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Database not configured' 
+      }, { status: 503 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const studentId = searchParams.get('studentId');
+
+    if (!studentId) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Student ID is required' 
+      }, { status: 400 });
+    }
+
+    const supabase = getSupabase();
+
+    const { error } = await supabase
+      .from('face_data')
+      .delete()
+      .eq('student_id', studentId);
+
+    if (error) {
+      console.error('Face data delete error:', error);
+      return NextResponse.json({
+        success: false,
+        message: 'Failed to delete face data'
+      }, { status: 500 });
+    }
+
+    console.log(`Face data deleted for student: ${studentId}`);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Face data deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Face data delete error:', error);
     return NextResponse.json({
       success: false,
       message: 'Internal server error'
