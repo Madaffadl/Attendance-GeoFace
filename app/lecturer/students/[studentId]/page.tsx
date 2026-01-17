@@ -17,11 +17,20 @@ import {
 } from 'lucide-react';
 import { Student } from '@/types';
 import { useAuth } from '@/lib/auth-context';
+
+interface StudentDetail extends Student {
+  stats: {
+    totalClasses: number;
+    totalAttendance: number;
+    attendanceRate: number;
+  };
+  history: any[];
+}
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 export default function StudentDetailPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const [student, setStudent] = useState<Student | null>(null);
+  const [student, setStudent] = useState<StudentDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const params = useParams();
@@ -140,8 +149,8 @@ export default function StudentDetailPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
-            <p className="text-xs text-muted-foreground">Dari semua kelas</p>
+            <div className="text-2xl font-bold">{student.stats.totalAttendance}</div>
+            <p className="text-xs text-muted-foreground">Kali hadir</p>
           </CardContent>
         </Card>
         
@@ -151,8 +160,8 @@ export default function StudentDetailPage() {
             <User className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-%</div>
-            <p className="text-xs text-muted-foreground">Semester ini</p>
+            <div className="text-2xl font-bold">{student.stats.attendanceRate}%</div>
+            <p className="text-xs text-muted-foreground">Persentase kehadiran</p>
           </CardContent>
         </Card>
         
@@ -162,8 +171,8 @@ export default function StudentDetailPage() {
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
-            <p className="text-xs text-muted-foreground">Kelas aktif</p>
+            <div className="text-2xl font-bold">{student.stats.totalClasses}</div>
+            <p className="text-xs text-muted-foreground">Kelas aktif diambil</p>
           </CardContent>
         </Card>
         
@@ -186,10 +195,50 @@ export default function StudentDetailPage() {
           <CardDescription>Daftar kehadiran mahasiswa di kelas Anda</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-gray-500">
-            <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <p>Data kehadiran akan ditampilkan di sini</p>
-          </div>
+          {student.history.length > 0 ? (
+            <div className="relative w-full overflow-auto">
+              <table className="w-full caption-bottom text-sm">
+                <thead className="[&_tr]:border-b">
+                  <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Kelas</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Waktu</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Metode</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="[&_tr:last-child]:border-0">
+                  {student.history.map((record: any) => (
+                    <tr key={record.id} className="border-b transition-colors hover:bg-muted/50">
+                      <td className="p-4 align-middle">
+                        {record.classes?.class_name} <span className="text-xs text-muted-foreground">({record.classes?.class_code})</span>
+                      </td>
+                      <td className="p-4 align-middle">
+                        {new Date(record.time).toLocaleDateString('id-ID', {
+                          weekday: 'long', 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </td>
+                      <td className="p-4 align-middle capitalize">{record.method}</td>
+                      <td className="p-4 align-middle">
+                        <Badge variant={record.status === 'Hadir' ? 'default' : 'secondary'}>
+                          {record.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+              <p>Belum ada riwayat kehadiran</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </LayoutWrapper>

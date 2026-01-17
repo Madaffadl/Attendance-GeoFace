@@ -26,13 +26,8 @@ import {
 } from '@/components/ui/select';
 import { Calendar, Download, Search, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { ROUTES } from '@/lib/routes';
-
-interface User {
-  id: string;
-  name: string;
-  userType: string;
-  identifier: string;
-}
+import { useAuth } from '@/lib/auth-context';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 interface AttendanceRecord {
   id: string;
@@ -40,43 +35,12 @@ interface AttendanceRecord {
   class_code: string;
   date: string;
   time: string;
-  status: 'present' | 'absent' | 'late';
+  status: string;
   location: string;
 }
 
-// Mock data for demonstration
-const mockAttendance: AttendanceRecord[] = [
-  {
-    id: '1',
-    class_name: 'Sistem Basis Data',
-    class_code: 'CS201',
-    date: '2025-12-21',
-    time: '08:15',
-    status: 'present',
-    location: 'Kampus A',
-  },
-  {
-    id: '2',
-    class_name: 'Pemrograman Web',
-    class_code: 'CS202',
-    date: '2025-12-20',
-    time: '10:05',
-    status: 'late',
-    location: 'Kampus A',
-  },
-  {
-    id: '3',
-    class_name: 'Struktur Data',
-    class_code: 'CS101',
-    date: '2025-12-19',
-    time: '-',
-    status: 'absent',
-    location: '-',
-  },
-];
-
 export default function AttendanceHistoryPage() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user, isLoading: authLoading } = useAuth();
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -84,28 +48,69 @@ export default function AttendanceHistoryPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (!userData) {
+    if (authLoading) return;
+    
+    if (!user) {
       router.push(ROUTES.LOGIN);
       return;
     }
 
-    try {
-      const parsedUser = JSON.parse(userData);
-      if (parsedUser.userType !== 'student') {
-        router.push(ROUTES.LOGIN);
-        return;
-      }
-      setUser(parsedUser);
-      // Simulate loading
-      setTimeout(() => {
-        setAttendance(mockAttendance);
-        setIsLoading(false);
-      }, 500);
-    } catch {
+    if (user.userType !== 'student') {
       router.push(ROUTES.LOGIN);
+      return;
     }
-  }, [router]);
+
+    fetchAttendanceHistory(user.id);
+  }, [user, authLoading, router]);
+
+  const fetchAttendanceHistory = async (studentId: string) => {
+    try {
+      const response = await fetch(`/api/attendance?studentId=${studentId}`);
+      const data = await response.json();
+      
+      if (data.success && data.attendance) {
+        const transformedData = data.attendance.map((record: any) => {
+          // Use recorded_at from database
+          const timestamp = record.recorded_at || record.time;
+          
+          // Parse date
+          let dateStr = '-';
+          let timeStr = '-';
+          if (timestamp) {
+            const dateObj = new Date(timestamp);
+            if (dateObj.toString() !== 'Invalid Date') {
+              dateStr = dateObj.toLocaleDateString('id-ID', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+              });
+              timeStr = dateObj.toLocaleTimeString('id-ID', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              });
+            }
+          }
+          
+          return {
+            id: record.id,
+            class_name: record.classes?.class_name || '-',
+            class_code: record.classes?.class_code || '-',
+            date: dateStr,
+            time: timeStr,
+            status: record.status?.toLowerCase() || 'absent',
+            location: record.location?.latitude && record.location?.longitude 
+              ? `${record.location.latitude.toFixed(4)}, ${record.location.longitude.toFixed(4)}`
+              : '-'
+          };
+        });
+        setAttendance(transformedData);
+      }
+    } catch (error) {
+      console.error('Error fetching attendance:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredAttendance = attendance.filter((record) => {
     const matchesSearch =
@@ -219,12 +224,7 @@ export default function AttendanceHistoryPage() {
               {filteredAttendance.map((record) => (
                 <TableRow key={record.id}>
                   <TableCell className="font-medium">
-                    {new Date(record.date).toLocaleDateString('id-ID', {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
+                    {record.date}
                   </TableCell>
                   <TableCell>{record.class_name}</TableCell>
                   <TableCell>

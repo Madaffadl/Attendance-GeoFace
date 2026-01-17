@@ -42,10 +42,22 @@ export default function StudentAttendancePage() {
       const response = await fetch(`/api/classes?studentId=${studentId}`);
       const data = await response.json();
       if (data.success) {
-        const today = new Date().toLocaleDateString('id-ID', { weekday: 'long' });
-        const todayClasses = data.classes.filter((cls: Class) =>
-          cls.schedule.toLowerCase().includes(today.toLowerCase())
-        );
+        const now = new Date();
+        const todayDayName = now.toLocaleDateString('id-ID', { weekday: 'long' }).toLowerCase();
+        
+        const todayClasses = data.classes.filter((cls: any) => {
+          // Check specific dates in schedule_details
+          if (cls.schedule_details && Array.isArray(cls.schedule_details) && cls.schedule_details.length > 0) {
+            return cls.schedule_details.some((d: any) => {
+              const dDate = new Date(d.date);
+              return dDate.getDate() === now.getDate() &&
+                     dDate.getMonth() === now.getMonth() &&
+                     dDate.getFullYear() === now.getFullYear();
+            });
+          }
+          // Fallback: Check day name in schedule string
+          return cls.schedule.toLowerCase().includes(todayDayName);
+        });
         setClasses(todayClasses);
       }
     } catch (error) {

@@ -66,15 +66,77 @@ export async function GET(request: NextRequest) {
         : 0;
 
       // Count today's classes
-      const today = new Date().toLocaleDateString('id-ID', { weekday: 'long' });
+      const now = new Date();
+      const todayDayName = now.toLocaleDateString('id-ID', { weekday: 'long' }).toLowerCase();
+      // YYYY-MM-DD in local time
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const todayDateStr = `${year}-${month}-${day}`;
+
       const { data: allClasses } = await supabase
         .from('classes')
         .select('schedule')
         .eq('lecturer_id', lecturerId);
 
-      const todayClasses = allClasses?.filter(cls => 
-        cls.schedule.toLowerCase().includes(today.toLowerCase())
-      ).length || 0;
+      let todayClassesCount = 0;
+
+      if (allClasses) {
+        console.log(`[Stats API] Checking classes for date: ${todayDateStr} (${todayDayName})`);
+        for (const cls of allClasses) {
+          try {
+            // Try as JSON (new format)
+            const scheduleObj = JSON.parse(cls.schedule);
+            let handled = false;
+
+            if (scheduleObj.details && Array.isArray(scheduleObj.details)) {
+               handled = true;
+               // Count ALL sessions for today with robust Date comparison
+               // Parse today items carefully matching local day/month/year
+               const sessions = scheduleObj.details.filter((d: any) => {
+                  const itemDate = new Date(d.date);
+                  return itemDate.getDate() === now.getDate() && 
+                         itemDate.getMonth() === now.getMonth() &&
+                         itemDate.getFullYear() === now.getFullYear();
+               });
+               
+               // Also check input matches if simple yyyy-mm-dd string comparison works (fallback)
+               const stringMatches = scheduleObj.details.filter((d: any) => d.date === todayDateStr);
+               
+               // Use maximum to avoid double counting if logic overlaps, but filter is safest
+               const count = Math.max(sessions.length, stringMatches.length);
+
+               if (count > 0) {
+                 console.log(`[Stats API] Found ${count} sessions for class via JSON details`);
+                 todayClassesCount += count;
+               }
+            } else if (scheduleObj.summary) {
+               handled = true;
+               if (scheduleObj.summary.toLowerCase().includes(todayDayName)) {
+                 console.log(`[Stats API] Found match in JSON summary: ${scheduleObj.summary}`);
+                 todayClassesCount++;
+               }
+            }
+
+            // Fallback for unknown JSON structures
+            if (!handled) {
+               if (cls.schedule.toLowerCase().includes(todayDayName)) {
+                   console.log(`[Stats API] Found match in Unknown JSON structure via string check: ${cls.schedule}`);
+                   todayClassesCount++;
+               }
+            }
+          } catch {
+             // Not JSON (legacy string)
+             if (cls.schedule.toLowerCase().includes(todayDayName)) {
+               console.log(`[Stats API] Found match in Legacy string: ${cls.schedule}`);
+               todayClassesCount++;
+             }
+          }
+        }
+        console.log(`[Stats API] Total todayClassesCount: ${todayClassesCount}`);
+      }
+      
+      const todayClasses = todayClassesCount;
 
       return NextResponse.json({
         success: true,

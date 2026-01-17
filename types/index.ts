@@ -15,11 +15,18 @@ export interface Lecturer {
   password: string;
 }
 
+export interface ScheduleItem {
+  date: string; // ISO date string (YYYY-MM-DD)
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+}
+
 export interface Class {
   id: string;
   class_code: string;
   class_name: string;
   schedule: string;
+  schedule_details?: ScheduleItem[];
   lecturer_id: string;
   lecturer_name?: string;
   student_count?: number;
@@ -30,25 +37,24 @@ export interface Class {
   };
 }
 
-
 export interface Attendance {
   id: string;
   student_id: string;
   class_id: string;
-  status: 'Present' | 'Absent' | 'Late';
+  status: "Present" | "Absent" | "Late";
   location?: {
     latitude: number;
     longitude: number;
   };
   time: string;
-  face_recognition_status: 'Matched' | 'Unmatched' | 'Pending';
+  face_recognition_status: "Matched" | "Unmatched" | "Pending";
 }
 
 export interface FaceRecognition {
   id: string;
   student_id: string;
   face_vector: string;
-  status: 'Matched' | 'Unmatched';
+  status: "Matched" | "Unmatched";
   confidence: number;
 }
 
@@ -56,7 +62,12 @@ export interface ActivityLog {
   id: string;
   student_id?: string;
   lecturer_id?: string;
-  activity_type: 'Login' | 'Attendance' | 'Class_Added' | 'Export_Data' | 'Face_Registration';
+  activity_type:
+    | "Login"
+    | "Attendance"
+    | "Class_Added"
+    | "Export_Data"
+    | "Face_Registration";
   time: string;
   details?: string;
 }
@@ -64,7 +75,7 @@ export interface ActivityLog {
 export interface LoginRequest {
   identifier: string; // NIM for students, code for lecturers
   password?: string; // Only for lecturers
-  userType: 'student' | 'lecturer';
+  userType: "student" | "lecturer";
 }
 
 export interface AttendanceRequest {

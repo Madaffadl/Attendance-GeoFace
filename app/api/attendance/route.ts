@@ -81,7 +81,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if student already marked attendance for this class today
-    const today = new Date().toISOString().split('T')[0];
+    // Use local timezone for date comparison
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`;
     const { data: existingAttendance } = await supabase
       .from('attendance')
       .select('id')
@@ -202,10 +207,14 @@ export async function GET(request: NextRequest) {
         latitude: parseFloat(att.location_latitude),
         longitude: parseFloat(att.location_longitude)
       } : null,
+      location_latitude: att.location_latitude,
+      location_longitude: att.location_longitude,
       time: att.recorded_at,
+      recorded_at: att.recorded_at,
       face_recognition_status: att.face_recognition_status,
-      student: att.students,
-      class: att.classes
+      students: att.students,
+      classes: att.classes,
+      student_name: att.students?.name || '-'
     }));
 
     return NextResponse.json({

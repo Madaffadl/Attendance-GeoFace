@@ -19,6 +19,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BookOpen, Clock, MapPin, Save, ArrowLeft, Info } from 'lucide-react';
 import { ROUTES } from '@/lib/routes';
+import { useToast } from '@/hooks/use-toast';
 
 interface User {
   id: string;
@@ -40,7 +41,9 @@ export default function NewClassPage() {
     room: '',
     description: '',
   });
+
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -83,12 +86,25 @@ export default function NewClassPage() {
       const data = await response.json();
 
       if (data.success) {
+        toast({
+          title: 'Berhasil',
+          description: 'Kelas berhasil dibuat',
+          variant: 'success',
+        });
         router.push(ROUTES.LECTURER.CLASSES);
       } else {
-        alert(data.message || 'Gagal membuat kelas');
+        toast({
+          title: 'Gagal',
+          description: data.message || 'Gagal membuat kelas',
+          variant: 'destructive',
+        });
       }
     } catch (error) {
-      alert('Terjadi kesalahan. Silakan coba lagi.');
+      toast({
+        title: 'Error',
+        description: 'Terjadi kesalahan. Silakan coba lagi.',
+        variant: 'destructive',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -96,7 +112,7 @@ export default function NewClassPage() {
 
   if (!user) return null;
 
-  const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
   return (
     <LayoutWrapper title="Tambah Kelas" subtitle="Buat kelas baru">
@@ -135,10 +151,11 @@ export default function NewClassPage() {
                   <Label htmlFor="class_code">Kode Kelas *</Label>
                   <Input
                     id="class_code"
-                    placeholder="contoh: CS301"
+                    placeholder="CONTOH: CS301"
+                    className="uppercase"
                     value={formData.class_code}
                     onChange={(e) =>
-                      setFormData({ ...formData, class_code: e.target.value })
+                      setFormData({ ...formData, class_code: e.target.value.toUpperCase() })
                     }
                     required
                   />

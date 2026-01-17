@@ -77,6 +77,11 @@ const studentNavItems: NavItem[] = [
     icon: BookOpen
   },
   {
+    label: 'Jadwal',
+    href: '/student/schedule',
+    icon: Calendar
+  },
+  {
     label: 'Registrasi Wajah',
     href: '/student/face-registration',
     icon: Users
@@ -124,8 +129,7 @@ const lecturerNavItems: NavItem[] = [
   {
     label: 'Laporan',
     href: '/lecturer/reports',
-    icon: BarChart3,
-    badge: 'Baru'
+    icon: BarChart3
   },
   {
     label: 'Pengaturan',
@@ -249,8 +253,8 @@ export function Navigation({ user, onLogout }: NavigationProps) {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed lg:static inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out lg:transform-none",
-        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        "fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0",
+        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full">
           {/* Header */}
@@ -290,17 +294,7 @@ export function Navigation({ user, onLogout }: NavigationProps) {
             </div>
           </div>
 
-          {/* Quick Search */}
-          <div className="p-4 border-b border-gray-200">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Cari menu..."
-                className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
+
 
           {/* Navigation Menu */}
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">

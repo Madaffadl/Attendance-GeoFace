@@ -79,7 +79,7 @@ export function LayoutWrapper({
         />
 
         {/* Main Content */}
-        <div className="flex-1 w-full lg">
+        <div className="flex-1 w-full lg:ml-72 transition-all duration-200 ease-in-out">
           {/* Desktop Header */}
           <header className="hidden lg:block bg-white shadow-sm border-b sticky top-0 z-10">
             <div className="px-6 py-4">

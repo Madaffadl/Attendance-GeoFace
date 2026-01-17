@@ -10,6 +10,7 @@ export const ROUTES = {
     STUDENT: {
         DASHBOARD: '/student/dashboard',
         CLASSES: '/student/classes',
+        SCHEDULE: '/student/schedule',
         ATTENDANCE: '/student/attendance',
         ATTENDANCE_HISTORY: '/student/attendance/history',
         ATTENDANCE_MARK: (classId: string) => `/student/attendance/${classId}`,

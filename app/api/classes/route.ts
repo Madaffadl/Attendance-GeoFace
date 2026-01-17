@@ -1,6 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 
+// Helper function to parse schedule data (handles both legacy string and new JSON format)
+function parseScheduleData(scheduleRaw: string): { schedule: string; schedule_details: any[] } {
+  try {
+    const scheduleObj = JSON.parse(scheduleRaw);
+    return {
+      schedule: scheduleObj.summary || scheduleRaw,
+      schedule_details: scheduleObj.details || []
+    };
+  } catch {
+    // Not JSON, use as-is (legacy format)
+    return { schedule: scheduleRaw, schedule_details: [] };
+  }
+}
+
+// Helper to transform class data from DB to API response
+function transformClassData(cls: any): any {
+  if (!cls) return null;
+  
+  const { schedule, schedule_details } = parseScheduleData(cls.schedule || '');
+  return {
+    id: cls.id,
+    class_code: cls.class_code,
+    class_name: cls.class_name,
+    schedule,
+    schedule_details,
+    lecturer_id: cls.lecturer_id,
+    lecturer_name: cls.lecturers?.name || '',
+    student_count: cls.student_count,
+    location: {
+      latitude: cls.location_latitude ? parseFloat(cls.location_latitude) : 0,
+      longitude: cls.location_longitude ? parseFloat(cls.location_longitude) : 0,
+      radius: cls.location_radius || 100
+    }
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
     if (!isSupabaseConfigured()) {
@@ -38,19 +74,7 @@ export async function GET(request: NextRequest) {
         }, { status: 404 });
       }
 
-      const classData = {
-        id: data.id,
-        class_code: data.class_code,
-        class_name: data.class_name,
-        schedule: data.schedule,
-        lecturer_id: data.lecturer_id,
-        lecturer_name: data.lecturers?.name || '',
-        location: {
-          latitude: parseFloat(data.location_latitude),
-          longitude: parseFloat(data.location_longitude),
-          radius: data.location_radius
-        }
-      };
+      const classData = transformClassData(data);
 
       return NextResponse.json({
         success: true,
@@ -93,22 +117,7 @@ export async function GET(request: NextRequest) {
 
 
       // Transform to expected format
-      const classes = enrollments?.map((e: any) => {
-        const cls = e.classes;
-        return {
-          id: cls.id,
-          class_code: cls.class_code,
-          class_name: cls.class_name,
-          schedule: cls.schedule,
-          lecturer_id: cls.lecturer_id,
-          lecturer_name: cls.lecturers?.name || '',
-          location: {
-            latitude: parseFloat(cls.location_latitude),
-            longitude: parseFloat(cls.location_longitude),
-            radius: cls.location_radius
-          }
-        };
-      }) || [];
+      const classes = enrollments?.map((e: any) => transformClassData(e.classes)) || [];
       
       return NextResponse.json({
         success: true,
@@ -116,12 +125,13 @@ export async function GET(request: NextRequest) {
       });
 
     } else if (lecturerId) {
-      // Return classes for a specific lecturer
+      // Return classes for a specific lecturer with student count
       const { data, error } = await supabase
         .from('classes')
         .select(`
           *,
-          lecturers (id, name)
+          lecturers (id, name),
+          enrollments (count)
         `)
         .eq('lecturer_id', lecturerId);
 
@@ -133,24 +143,20 @@ export async function GET(request: NextRequest) {
         }, { status: 500 });
       }
 
-      const classes = data?.map((cls: any) => ({
-        id: cls.id,
-        class_code: cls.class_code,
-        class_name: cls.class_name,
-        schedule: cls.schedule,
-        lecturer_id: cls.lecturer_id,
-        lecturer_name: cls.lecturers?.name || '',
-        location: {
-          latitude: parseFloat(cls.location_latitude),
-          longitude: parseFloat(cls.location_longitude),
-          radius: cls.location_radius
-        }
-      })) || [];
+      const classes = data?.map((cls: any) => {
+        const transformed = transformClassData(cls);
+        // Fix student_count from enrollments aggregate
+        return {
+          ...transformed,
+          student_count: cls.enrollments?.[0]?.count || 0
+        };
+      }) || [];
       
       return NextResponse.json({
         success: true,
         classes
       });
+
 
     } else {
       // Return all classes
@@ -169,19 +175,7 @@ export async function GET(request: NextRequest) {
         }, { status: 500 });
       }
 
-      const classes = data?.map((cls: any) => ({
-        id: cls.id,
-        class_code: cls.class_code,
-        class_name: cls.class_name,
-        schedule: cls.schedule,
-        lecturer_id: cls.lecturer_id,
-        lecturer_name: cls.lecturers?.name || '',
-        location: {
-          latitude: parseFloat(cls.location_latitude),
-          longitude: parseFloat(cls.location_longitude),
-          radius: cls.location_radius
-        }
-      })) || [];
+      const classes = data?.map((cls: any) => transformClassData(cls)) || [];
 
       return NextResponse.json({
         success: true,
@@ -207,29 +201,41 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { class_code, class_name, schedule, lecturer_id, location } = body;
+    let { class_code, class_name, schedule, schedule_details, lecturer_id, location } = body;
+
+    // Enforce uppercase
+    if (class_code) class_code = class_code.toUpperCase();
 
     // Validate required fields
-    if (!class_code || !class_name || !schedule || !lecturer_id) {
+    if (!class_code || !class_name || !lecturer_id) {
       return NextResponse.json({
         success: false,
         message: 'Missing required fields'
       }, { status: 400 });
     }
 
+    // Validate that we have schedule info
+    if (!schedule && (!schedule_details || schedule_details.length === 0)) {
+      return NextResponse.json({
+        success: false,
+        message: 'Schedule is required'
+      }, { status: 400 });
+    }
+
     const supabase = getSupabase();
 
     // Check if class code already exists
-    const { data: existingClass } = await supabase
+    const { data: existingClass, error: existingError } = await supabase
       .from('classes')
       .select('id')
       .eq('class_code', class_code)
-      .single();
+      .maybeSingle();
 
+    // Only fail if class actually exists (not on query error for no results)
     if (existingClass) {
       return NextResponse.json({
         success: false,
-        message: 'Class code already exists'
+        message: 'Kode kelas sudah digunakan'
       }, { status: 409 });
     }
 
@@ -247,33 +253,64 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
 
+    // Prepare schedule data - store schedule_details as JSON string in schedule column
+    // IMPORTANT: Database column 'schedule' must be TEXT type (not VARCHAR(100))
+    let scheduleData = schedule || '';
+    if (schedule_details && schedule_details.length > 0) {
+      scheduleData = JSON.stringify({
+        summary: schedule || `${schedule_details.length} Pertemuan`,
+        details: schedule_details
+      });
+    }
+
     // Create new class
     const { data: newClass, error: createError } = await supabase
       .from('classes')
       .insert({
         class_code,
         class_name,
-        schedule,
+        schedule: scheduleData,
         lecturer_id,
         location_latitude: location?.latitude || -6.2088,
         location_longitude: location?.longitude || 106.8456,
-        location_radius: location?.radius || 50
+        location_radius: location?.radius || 100
       })
       .select()
       .single();
 
     if (createError) {
       console.error('Class creation error:', createError);
+      console.error('Error details:', {
+        code: createError.code,
+        message: createError.message,
+        details: createError.details,
+        hint: createError.hint
+      });
       return NextResponse.json({
         success: false,
-        message: 'Failed to create class'
+        message: `Failed to create class: ${createError.message || 'Unknown error'}`
       }, { status: 500 });
+    }
+
+    // Parse schedule back for response
+    let parsedSchedule = newClass.schedule;
+    let parsedScheduleDetails: any[] = [];
+    try {
+      const scheduleObj = JSON.parse(newClass.schedule);
+      if (scheduleObj.summary) {
+        parsedSchedule = scheduleObj.summary;
+        parsedScheduleDetails = scheduleObj.details || [];
+      }
+    } catch {
+      // Not JSON, use as-is (legacy format)
     }
 
     return NextResponse.json({
       success: true,
       class: {
         ...newClass,
+        schedule: parsedSchedule,
+        schedule_details: parsedScheduleDetails,
         lecturer_name: lecturer.name,
         location: {
           latitude: parseFloat(newClass.location_latitude),
@@ -338,21 +375,16 @@ export async function PUT(request: NextRequest) {
       console.error('Class update error:', error);
       return NextResponse.json({
         success: false,
-        message: 'Failed to update class'
+        message: `Failed to update class: ${error.message || 'Unknown error'}`
       }, { status: 500 });
     }
 
+    // Use transformClassData to properly parse schedule_details
+    const transformedClass = transformClassData(updatedClass);
+
     return NextResponse.json({
       success: true,
-      class: {
-        ...updatedClass,
-        lecturer_name: (updatedClass.lecturers as any)?.name || '',
-        location: {
-          latitude: parseFloat(updatedClass.location_latitude),
-          longitude: parseFloat(updatedClass.location_longitude),
-          radius: updatedClass.location_radius
-        }
-      },
+      class: transformedClass,
       message: 'Class updated successfully'
     });
 

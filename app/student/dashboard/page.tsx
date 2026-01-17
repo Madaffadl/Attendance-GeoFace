@@ -10,10 +10,22 @@ import { ClassCard } from '@/components/ui/class-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, User, BookOpen, Trash2, AlertTriangle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Calendar, User, BookOpen, Trash2, AlertTriangle, Plus, Loader2 } from 'lucide-react';
 import { Class } from '@/types';
 import { useAuth } from '@/lib/auth-context';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function StudentDashboard() {
   const { user, hasFaceRegistered, isLoading: authLoading, refreshFaceStatus } = useAuth();
@@ -52,9 +64,61 @@ export default function StudentDashboard() {
     }
   };
 
+  // Join class state
+  const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
+  const [classCode, setClassCode] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState('');
+  const [joinSuccess, setJoinSuccess] = useState('');
+
   // Testing functions
   const [testingMessage, setTestingMessage] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleJoinClass = async () => {
+    if (!classCode.trim()) {
+      setJoinError('Masukkan kode kelas');
+      return;
+    }
+
+    setIsJoining(true);
+    setJoinError('');
+    setJoinSuccess('');
+
+    try {
+      const response = await fetch('/api/enrollments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: user?.id,
+          class_code: classCode.trim().toUpperCase()
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setJoinSuccess(data.message);
+        setClassCode('');
+        // Refresh classes list
+        if (user) {
+          await fetchClasses(user.id);
+        }
+        // Close dialog after 1.5s
+        setTimeout(() => {
+          setIsJoinDialogOpen(false);
+          setJoinSuccess('');
+        }, 1500);
+      } else {
+        setJoinError(data.message || 'Gagal bergabung ke kelas');
+      }
+    } catch (error) {
+      console.error('Error joining class:', error);
+      setJoinError('Terjadi kesalahan saat bergabung ke kelas');
+    } finally {
+      setIsJoining(false);
+    }
+  };
 
   const deleteFaceData = async () => {
     if (!user) return;
@@ -115,16 +179,43 @@ export default function StudentDashboard() {
     );
   }
 
-  const todayClasses = classes.filter(cls => {
-    const today = new Date().toLocaleDateString('id-ID', { weekday: 'long' });
-    return cls.schedule.toLowerCase().includes(today.toLowerCase());
-  });
+  // Count total sessions for today (not just unique classes)
+  const todaySessionsCount = (() => {
+    const now = new Date();
+    const todayDayName = now.toLocaleDateString('id-ID', { weekday: 'long' }).toLowerCase();
+    let count = 0;
+    
+    classes.forEach((cls: any) => {
+      // Check specific dates in schedule_details from API
+      if (cls.schedule_details && Array.isArray(cls.schedule_details) && cls.schedule_details.length > 0) {
+        count += cls.schedule_details.filter((d: any) => {
+          const dDate = new Date(d.date);
+          return dDate.getDate() === now.getDate() &&
+                 dDate.getMonth() === now.getMonth() &&
+                 dDate.getFullYear() === now.getFullYear();
+        }).length;
+      } else if (cls.schedule?.toLowerCase().includes(todayDayName)) {
+        // Fallback: Check day name (legacy format counts as 1 session)
+        count++;
+      }
+    });
+    
+    return count;
+  })();
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <LayoutWrapper 
       title="Dashboard" 
       subtitle={`Selamat datang kembali, ${user.name}`}
-      showSearch={true}
+
     >
       {/* User Info Card */}
       <UserInfoCard 
@@ -168,7 +259,7 @@ export default function StudentDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{todayClasses.length}</div>
+            <div className="text-2xl font-bold text-gray-900">{todaySessionsCount}</div>
             <p className="text-xs text-gray-600">Jadwal hari ini</p>
           </CardContent>
         </Card>
@@ -199,19 +290,84 @@ export default function StudentDashboard() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900">Kelas Saya</h2>
-          <Badge variant="secondary" className="px-3 py-1">
-            {classes.length} Kelas
-          </Badge>
+          <div className="flex items-center gap-3">
+            <Dialog open={isJoinDialogOpen} onOpenChange={(open) => {
+              setIsJoinDialogOpen(open);
+              if (!open) {
+                setClassCode('');
+                setJoinError('');
+                setJoinSuccess('');
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Gabung Kelas
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[400px]">
+                <DialogHeader>
+                  <DialogTitle>Gabung Kelas Baru</DialogTitle>
+                  <DialogDescription>
+                    Masukkan kode kelas yang diberikan oleh dosen untuk bergabung.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="classCode">Kode Kelas</Label>
+                    <Input
+                      id="classCode"
+                      placeholder="Contoh: CS101"
+                      value={classCode}
+                      onChange={(e) => setClassCode(e.target.value.toUpperCase())}
+                      className="text-lg font-mono tracking-wider"
+                      disabled={isJoining}
+                    />
+                  </div>
+                  {joinError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                      {joinError}
+                    </div>
+                  )}
+                  {joinSuccess && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-600">
+                      {joinSuccess}
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsJoinDialogOpen(false)} disabled={isJoining}>
+                    Batal
+                  </Button>
+                  <Button onClick={handleJoinClass} disabled={isJoining || !classCode.trim()}>
+                    {isJoining ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Bergabung...
+                      </>
+                    ) : (
+                      'Gabung Kelas'
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <Badge variant="secondary" className="px-3 py-1">
+              {classes.length} Kelas
+            </Badge>
+          </div>
         </div>
 
         {isLoading ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[...Array(3)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i}>
                 <CardContent className="p-6">
-                  <div className="h-6 bg-gray-200 rounded mb-4" />
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-                  <div className="h-10 bg-gray-200 rounded mt-4" />
+                  <Skeleton className="h-6 w-1/3 mb-4" />
+                  <Skeleton className="h-4 w-3/4 mb-2" />
+                  <div className="mt-4">
+                    <Skeleton className="h-10 w-full" />
+                  </div>
                 </CardContent>
               </Card>
             ))}

@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { Class } from '@/types';
 import { useAuth } from '@/lib/auth-context';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface LecturerStats {
   totalClasses: number;
@@ -40,8 +42,10 @@ export default function LecturerDashboard() {
   const [classStudentCounts, setClassStudentCounts] = useState<{ [key: string]: number }>({});
   const [isAddingClass, setIsAddingClass] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [classCodeInput, setClassCodeInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -114,7 +118,7 @@ export default function LecturerDashboard() {
 
     const formData = new FormData(e.currentTarget);
     const classData = {
-      class_code: formData.get('class_code') as string,
+      class_code: (formData.get('class_code') as string).toUpperCase(),
       class_name: formData.get('class_name') as string,
       schedule: formData.get('schedule') as string,
       lecturer_id: user?.id
@@ -135,13 +139,27 @@ export default function LecturerDashboard() {
         setClasses([...classes, data.class]);
         setIsDialogOpen(false);
         (e.target as HTMLFormElement).reset();
+        setClassCodeInput('');
         // Refresh stats
         if (user) fetchStats(user.id);
+        toast({
+          title: 'Berhasil',
+          description: 'Kelas berhasil dibuat',
+          variant: 'success',
+        });
       } else {
-        alert(data.message || 'Failed to create class');
+        toast({
+          title: 'Gagal',
+          description: data.message || 'Gagal membuat kelas',
+          variant: 'destructive',
+        });
       }
     } catch (error) {
-      alert('Network error. Please try again.');
+      toast({
+        title: 'Error',
+        description: 'Terjadi kesalahan jaringan. Silakan coba lagi.',
+        variant: 'destructive',
+      });
     } finally {
       setIsAddingClass(false);
     }
@@ -175,7 +193,11 @@ export default function LecturerDashboard() {
         window.URL.revokeObjectURL(url);
       }
     } catch (error) {
-      alert('Failed to export attendance data');
+      toast({
+        title: 'Gagal',
+        description: 'Gagal mengexport data kehadiran',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -193,9 +215,22 @@ export default function LecturerDashboard() {
     <LayoutWrapper 
       title="Dashboard" 
       subtitle={`Selamat datang kembali, ${user.name}`}
-      showSearch={true}
+
     >
       {/* Stats Cards - Now using real data */}
+      {/* Stats Cards - Now using real data */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="shadow-md border-0">
+              <CardContent className="p-6">
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-4 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card className="shadow-md border-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -238,6 +273,7 @@ export default function LecturerDashboard() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       <div className="mb-8">
         <QuickActions user={user} />
@@ -248,12 +284,6 @@ export default function LecturerDashboard() {
           <h2 className="text-2xl font-bold text-gray-900">Kelas Saya</h2>
           
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Tambah Kelas
-              </Button>
-            </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Tambah Kelas Baru</DialogTitle>
@@ -268,7 +298,10 @@ export default function LecturerDashboard() {
                   <Input
                     id="class_code"
                     name="class_code"
-                    placeholder="contoh: CS301"
+                    placeholder="CONTOH: CS301"
+                    className="uppercase"
+                    value={classCodeInput}
+                    onChange={(e) => setClassCodeInput(e.target.value.toUpperCase())}
                     required
                     disabled={isAddingClass}
                   />
@@ -316,12 +349,14 @@ export default function LecturerDashboard() {
 
         {isLoading ? (
           <div className="grid gap-6 lg:grid-cols-2">
-            {[...Array(2)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i}>
                 <CardContent className="p-6">
-                  <div className="h-6 bg-gray-200 rounded mb-4" />
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-                  <div className="h-10 bg-gray-200 rounded mt-4" />
+                  <Skeleton className="h-6 w-1/3 mb-4" />
+                  <Skeleton className="h-4 w-3/4 mb-2" />
+                  <div className="mt-4">
+                    <Skeleton className="h-10 w-full" />
+                  </div>
                 </CardContent>
               </Card>
             ))}

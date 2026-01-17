@@ -16,15 +16,15 @@ export async function GET(request: NextRequest) {
 
     const supabase = getSupabase();
 
-    // Get a single student by ID
+    // Get a single student by ID with expanded stats
     if (studentId) {
-      const { data, error } = await supabase
+      const { data: student, error } = await supabase
         .from('students')
         .select('*')
         .eq('id', studentId)
         .single();
 
-      if (error || !data) {
+      if (error || !student) {
         console.error('Student fetch error:', error);
         return NextResponse.json({
           success: false,
@@ -32,15 +32,49 @@ export async function GET(request: NextRequest) {
         }, { status: 404 });
       }
 
+      // Get enrollment count
+      const { count: classCount } = await supabase
+        .from('enrollments')
+        .select('*', { count: 'exact', head: true })
+        .eq('student_id', studentId);
+
+      // Get attendance detailed history
+      const { data: history } = await supabase
+        .from('attendance')
+        .select(`
+          id,
+          status,
+          time,
+          method,
+          classes (class_name, class_code)
+        `)
+        .eq('student_id', studentId)
+        .order('time', { ascending: false });
+
+      // Calculate simple stats based on recorded attendance
+      const totalAttendance = history?.length || 0;
+      const presentCount = history?.filter((h: any) => h.status === 'Hadir').length || 0;
+      // This rate is (Present / Total Records). 
+      // Ideally should be (Present / Total Scheduled). But for now this shows "punctuality" of records.
+      const attendanceRate = totalAttendance > 0 
+        ? Math.round((presentCount / totalAttendance) * 100) 
+        : 0;
+
       return NextResponse.json({
         success: true,
         student: {
-          id: data.id,
-          nim: data.nim,
-          name: data.name,
-          email: data.email,
-          program_study: data.program_study,
-          photo: data.photo
+          id: student.id,
+          nim: student.nim,
+          name: student.name,
+          email: student.email,
+          program_study: student.program_study,
+          photo: student.photo,
+          stats: {
+            totalClasses: classCount || 0,
+            totalAttendance: totalAttendance,
+            attendanceRate: attendanceRate
+          },
+          history: history || []
         }
       });
     }
