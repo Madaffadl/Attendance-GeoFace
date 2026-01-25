@@ -170,7 +170,7 @@ export default function LoginPage() {
 
                 <div className="text-sm text-gray-600 bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <strong>Demo NIMs:</strong><br />
-                  2021001 (John Doe)<br />
+                  2021001 (M.Daffa Fadillah)<br />
                   2021002 (Jane Smith)<br />
                   2021003 (Mike Johnson)
                 </div>

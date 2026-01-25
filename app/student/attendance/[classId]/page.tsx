@@ -76,7 +76,105 @@ export default function AttendancePage() {
         const classResult = await classResponse.json();
         
         if (classResult.success && classResult.class) {
-          setClassData(classResult.class);
+          const cls = classResult.class;
+          
+          // Validate Schedule Time
+          const now = new Date();
+          let isTimeValid = false;
+          let timeMsg = '';
+
+          // 1. Check schedule_details if present
+          if (cls.schedule_details && cls.schedule_details.length > 0) {
+            const todayDetail = cls.schedule_details.find((d: any) => {
+              const dDate = new Date(d.date);
+              return dDate.toDateString() === now.toDateString();
+            });
+            
+            if (todayDetail) {
+              const [startH, startM] = todayDetail.startTime.split(':').map(Number);
+              const [endH, endM] = todayDetail.endTime.split(':').map(Number);
+              
+              const startTime = new Date(now);
+              startTime.setHours(startH, startM, 0);
+              
+              const endTime = new Date(now);
+              endTime.setHours(endH, endM, 0);
+              
+              if (now >= startTime && now <= endTime) {
+                isTimeValid = true;
+              } else if (now < startTime) {
+                timeMsg = `Kelas belum dimulai (Mulai: ${todayDetail.startTime})`;
+              } else {
+                timeMsg = 'Kelas sudah selesai';
+              }
+            } else {
+               // If details exist but no detail for today? 
+               // Assuming if accessed today, it should be in details if we rely on details.
+               // But maybe fallback to schedule string?
+               // Let's check schedule string as fallback if strict date not found, 
+               // OR if details imply specific dates only, then today is invalid.
+               // Let's assume strict if details exist.
+               timeMsg = 'Tidak ada jadwal kelas hari ini';
+            }
+          } 
+          // 2. Fallback to schedule string
+          else if (cls.schedule) {
+             const parts = cls.schedule.split(' ');
+             const daysMap: {[key: string]: number} = {
+                'minggu': 0, 'senin': 1, 'selasa': 2, 'rabu': 3, 'kamis': 4, 'jumat': 5, 'sabtu': 6
+             };
+             
+             if (parts.length >= 2) {
+                const dayName = parts[0].toLowerCase();
+                const currentDay = now.getDay();
+                
+                if (daysMap[dayName] === currentDay) {
+                   const timePart = parts.find((p: string) => p.includes('-') && p.includes(':'));
+                   if (timePart) {
+                      const [startStr, endStr] = timePart.split('-');
+                      if (startStr && endStr) {
+                         const [startH, startM] = startStr.split(':').map(Number);
+                         const [endH, endM] = endStr.split(':').map(Number);
+                         
+                         const startTime = new Date(now);
+                         startTime.setHours(startH, startM, 0);
+                         
+                         const endTime = new Date(now);
+                         endTime.setHours(endH, endM, 0);
+                         
+                         if (now >= startTime && now <= endTime) {
+                            isTimeValid = true;
+                         } else if (now < startTime) {
+                            timeMsg = `Kelas belum dimulai (Mulai: ${startStr})`;
+                         } else {
+                            timeMsg = 'Kelas sudah selesai';
+                         }
+                      } else {
+                         // Default open if time parse fail
+                         isTimeValid = true;
+                      }
+                   } else {
+                      isTimeValid = true;
+                   }
+                } else {
+                   timeMsg = `Jadwal kelas bukan hari ini (${dayName})`;
+                }
+             } else {
+                isTimeValid = true;
+             }
+          } else {
+             isTimeValid = true;
+          }
+
+          if (isTimeValid) {
+            setClassData(cls);
+          } else {
+            setError(timeMsg || 'Jadwal kelas tidak valid');
+            setTimeout(() => {
+              router.push('/student/dashboard');
+            }, 3000);
+          }
+
         } else {
           setError('Kelas tidak ditemukan');
         }

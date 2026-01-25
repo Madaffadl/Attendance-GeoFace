@@ -35,6 +35,7 @@ export interface Class {
     longitude: number;
     radius: number; // in meters
   };
+  has_attended_today?: boolean;
 }
 
 export interface Attendance {

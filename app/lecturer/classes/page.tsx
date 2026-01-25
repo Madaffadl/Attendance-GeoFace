@@ -45,6 +45,7 @@ export default function LecturerClassesPage() {
   const [isAddingClass, setIsAddingClass] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [classCodeInput, setClassCodeInput] = useState('');
   // Location state
   const [locationLatitude, setLocationLatitude] = useState<string>('');
   const [locationLongitude, setLocationLongitude] = useState<string>('');
@@ -244,7 +245,7 @@ export default function LecturerClassesPage() {
     const scheduleSummary = `${scheduleList.length} Pertemuan`;
     
     const classData = {
-      class_code: formData.get('class_code') as string,
+      class_code: classCodeInput, // Already uppercased by state
       class_name: formData.get('class_name') as string,
       schedule: scheduleSummary,
       schedule_details: scheduleList,
@@ -272,6 +273,7 @@ export default function LecturerClassesPage() {
         setIsDialogOpen(false);
         (e.target as HTMLFormElement).reset();
         // Reset all state
+        setClassCodeInput('');
         setScheduleList([]);
         setLocationLatitude('');
         setLocationLongitude('');
@@ -344,11 +346,14 @@ export default function LecturerClassesPage() {
             
             <form onSubmit={handleAddClass} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="class_code">Kode Kelas</Label>
+                <Label htmlFor="class_code">Kode Kelas *</Label>
                 <Input
                   id="class_code"
                   name="class_code"
-                  placeholder="contoh: CS301"
+                  placeholder="CONTOH: CS301"
+                  className="uppercase"
+                  value={classCodeInput}
+                  onChange={(e) => setClassCodeInput(e.target.value.toUpperCase())}
                   required
                   disabled={isAddingClass}
                 />

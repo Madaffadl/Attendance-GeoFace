@@ -94,6 +94,7 @@ export default function ClassDetailPage() {
       
       if (data.success) {
         setStudents(data.enrollments || []);
+        setStudentCount(data.enrollments?.length || 0);
       }
     } catch (error) {
       console.error('Error fetching students:', error);

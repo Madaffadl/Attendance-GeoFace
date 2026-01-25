@@ -201,6 +201,7 @@ export default function StudentDetailPage() {
                 <thead className="[&_tr]:border-b">
                   <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Kelas</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Tanggal</th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Waktu</th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Metode</th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
@@ -213,16 +214,20 @@ export default function StudentDetailPage() {
                         {record.classes?.class_name} <span className="text-xs text-muted-foreground">({record.classes?.class_code})</span>
                       </td>
                       <td className="p-4 align-middle">
-                        {new Date(record.time).toLocaleDateString('id-ID', {
+                        {new Date(record.recorded_at || record.time).toLocaleDateString('id-ID', {
                           weekday: 'long', 
                           year: 'numeric', 
                           month: 'long', 
-                          day: 'numeric',
+                          day: 'numeric'
+                        })}
+                      </td>
+                      <td className="p-4 align-middle">
+                        {new Date(record.recorded_at || record.time).toLocaleTimeString('id-ID', {
                           hour: '2-digit',
                           minute: '2-digit'
                         })}
                       </td>
-                      <td className="p-4 align-middle capitalize">{record.method}</td>
+                      <td className="p-4 align-middle capitalize">{record.method || 'Face Scan'}</td>
                       <td className="p-4 align-middle">
                         <Badge variant={record.status === 'Hadir' ? 'default' : 'secondary'}>
                           {record.status}

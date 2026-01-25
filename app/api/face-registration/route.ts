@@ -181,7 +181,6 @@ export async function DELETE(request: NextRequest) {
       }, { status: 500 });
     }
 
-    console.log(`Face data deleted for student: ${studentId}`);
 
     return NextResponse.json({
       success: true,

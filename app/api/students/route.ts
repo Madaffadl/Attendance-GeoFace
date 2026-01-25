@@ -18,6 +18,15 @@ export async function GET(request: NextRequest) {
 
     // Get a single student by ID with expanded stats
     if (studentId) {
+      // Try using RPC function first (fastest)
+      const { data: rpcData, error: rpcError } = await supabase
+        .rpc('get_student_with_stats', { p_student_id: studentId });
+
+      if (!rpcError && rpcData && rpcData.success) {
+        return NextResponse.json(rpcData);
+      }
+
+      // Fallback: Manual fetch (N+1 queries) if RPC missing
       const { data: student, error } = await supabase
         .from('students')
         .select('*')
@@ -44,22 +53,24 @@ export async function GET(request: NextRequest) {
         .select(`
           id,
           status,
-          time,
-          method,
+          recorded_at,
           classes (class_name, class_code)
         `)
         .eq('student_id', studentId)
-        .order('time', { ascending: false });
+        .order('recorded_at', { ascending: false });
 
       // Calculate simple stats based on recorded attendance
       const totalAttendance = history?.length || 0;
-      const presentCount = history?.filter((h: any) => h.status === 'Hadir').length || 0;
-      // This rate is (Present / Total Records). 
-      // Ideally should be (Present / Total Scheduled). But for now this shows "punctuality" of records.
+      const presentCount = history?.filter((h: any) => h.status === 'Hadir' || h.status === 'Present').length || 0;
       const attendanceRate = totalAttendance > 0 
         ? Math.round((presentCount / totalAttendance) * 100) 
         : 0;
 
+      // Transform history to match RPC format if needed, or keep as is
+      // The frontend expects: id, class_name, class_code, date, time, status
+      // The API transformation happens in the page component usually, 
+      // but let's match the structure closer to what we had
+      
       return NextResponse.json({
         success: true,
         student: {

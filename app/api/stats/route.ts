@@ -18,52 +18,67 @@ export async function GET(request: NextRequest) {
 
     if (lecturerId) {
       // Get stats for a specific lecturer
-      
-      // Get all classes for this lecturer
-      const { data: classes, error: classError } = await supabase
-        .from('classes')
-        .select('id')
-        .eq('lecturer_id', lecturerId);
-
-      if (classError) {
-        console.error('Classes fetch error:', classError);
-        return NextResponse.json({
-          success: false,
-          message: 'Failed to fetch stats'
-        }, { status: 500 });
-      }
-
-      const classIds = classes?.map(c => c.id) || [];
-      const totalClasses = classIds.length;
-
-      // Get unique students enrolled in lecturer's classes
+      let totalClasses = 0;
       let totalStudents = 0;
       let totalAttendance = 0;
-      let totalPossibleAttendance = 0;
+      let attendanceRate = 0;
 
-      if (classIds.length > 0) {
-        // Count unique students
-        const { data: enrollments } = await supabase
-          .from('enrollments')
-          .select('student_id')
-          .in('class_id', classIds);
+      // Try using RPC function first (fastest)
+      const { data: rpcData, error: rpcError } = await supabase
+        .rpc('get_lecturer_stats', { p_lecturer_id: lecturerId });
 
-        const uniqueStudents = new Set(enrollments?.map(e => e.student_id) || []);
-        totalStudents = uniqueStudents.size;
+      if (!rpcError && rpcData && rpcData.success) {
+        // Use data from RPC
+        totalClasses = rpcData.stats.totalClasses;
+        totalStudents = rpcData.stats.totalStudents;
+        totalAttendance = rpcData.stats.totalAttendance;
+        attendanceRate = rpcData.stats.attendanceRate;
+      } else {
+        // Fallback: Legacy manual fetch (multiple queries)
+        // Get all classes for this lecturer
+        const { data: classes, error: classError } = await supabase
+          .from('classes')
+          .select('id')
+          .eq('lecturer_id', lecturerId);
 
-        // Count attendance records
-        const { data: attendanceRecords } = await supabase
-          .from('attendance')
-          .select('id, status')
-          .in('class_id', classIds);
+        if (classError) {
+          console.error('Classes fetch error:', classError);
+          return NextResponse.json({
+            success: false,
+            message: 'Failed to fetch stats'
+          }, { status: 500 });
+        }
 
-        totalAttendance = attendanceRecords?.filter(a => a.status === 'Present').length || 0;
-        totalPossibleAttendance = attendanceRecords?.length || 0;
+        const classIds = classes?.map(c => c.id) || [];
+        totalClasses = classIds.length;
+
+        // Get unique students enrolled in lecturer's classes
+        let totalPossibleAttendance = 0;
+
+        if (classIds.length > 0) {
+          // Count unique students
+          const { data: enrollments } = await supabase
+            .from('enrollments')
+            .select('student_id')
+            .in('class_id', classIds);
+
+          const uniqueStudents = new Set(enrollments?.map(e => e.student_id) || []);
+          totalStudents = uniqueStudents.size;
+
+          // Count attendance records
+          const { data: attendanceRecords } = await supabase
+            .from('attendance')
+            .select('id, status')
+            .in('class_id', classIds);
+
+          totalAttendance = attendanceRecords?.filter(a => a.status === 'Present').length || 0;
+          totalPossibleAttendance = attendanceRecords?.length || 0;
+        }
+
+        attendanceRate = totalPossibleAttendance > 0 
+          ? Math.round((totalAttendance / totalPossibleAttendance) * 100) 
+          : 0;
       }
-
-      const attendanceRate = totalPossibleAttendance > 0 
-        ? Math.round((totalAttendance / totalPossibleAttendance) * 100) 
-        : 0;
 
       // Count today's classes
       const now = new Date();
@@ -82,7 +97,7 @@ export async function GET(request: NextRequest) {
       let todayClassesCount = 0;
 
       if (allClasses) {
-        console.log(`[Stats API] Checking classes for date: ${todayDateStr} (${todayDayName})`);
+
         for (const cls of allClasses) {
           try {
             // Try as JSON (new format)
@@ -107,13 +122,13 @@ export async function GET(request: NextRequest) {
                const count = Math.max(sessions.length, stringMatches.length);
 
                if (count > 0) {
-                 console.log(`[Stats API] Found ${count} sessions for class via JSON details`);
+
                  todayClassesCount += count;
                }
             } else if (scheduleObj.summary) {
                handled = true;
                if (scheduleObj.summary.toLowerCase().includes(todayDayName)) {
-                 console.log(`[Stats API] Found match in JSON summary: ${scheduleObj.summary}`);
+
                  todayClassesCount++;
                }
             }
@@ -121,19 +136,19 @@ export async function GET(request: NextRequest) {
             // Fallback for unknown JSON structures
             if (!handled) {
                if (cls.schedule.toLowerCase().includes(todayDayName)) {
-                   console.log(`[Stats API] Found match in Unknown JSON structure via string check: ${cls.schedule}`);
+
                    todayClassesCount++;
                }
             }
           } catch {
              // Not JSON (legacy string)
              if (cls.schedule.toLowerCase().includes(todayDayName)) {
-               console.log(`[Stats API] Found match in Legacy string: ${cls.schedule}`);
+
                todayClassesCount++;
              }
           }
         }
-        console.log(`[Stats API] Total todayClassesCount: ${todayClassesCount}`);
+
       }
       
       const todayClasses = todayClassesCount;

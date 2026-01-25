@@ -16,7 +16,7 @@ function parseScheduleData(scheduleRaw: string): { schedule: string; schedule_de
 }
 
 // Helper to transform class data from DB to API response
-function transformClassData(cls: any): any {
+function transformClassData(cls: any, attendanceMap?: Set<string>): any {
   if (!cls) return null;
   
   const { schedule, schedule_details } = parseScheduleData(cls.schedule || '');
@@ -33,7 +33,8 @@ function transformClassData(cls: any): any {
       latitude: cls.location_latitude ? parseFloat(cls.location_latitude) : 0,
       longitude: cls.location_longitude ? parseFloat(cls.location_longitude) : 0,
       radius: cls.location_radius || 100
-    }
+    },
+    has_attended_today: attendanceMap ? attendanceMap.has(cls.id) : false
   };
 }
 
@@ -55,13 +56,13 @@ export async function GET(request: NextRequest) {
 
     // Return a single class by ID
     if (classId) {
-      console.log('[API] GET /api/classes - classId:', classId);
       
       const { data, error } = await supabase
         .from('classes')
         .select(`
           *,
-          lecturers (id, name)
+          lecturers (id, name),
+          enrollments (count)
         `)
         .eq('id', classId)
         .single();
@@ -74,7 +75,34 @@ export async function GET(request: NextRequest) {
         }, { status: 404 });
       }
 
+      // If studentId is also present, check single class attendance? 
+      // User flow usually fetches list, but let's be safe.
+      // For now, keep single class simple or check if needed.
+      // Actually, dashboard uses list. Let's focus on list.
+      
+      let hasAttended = false;
+      if (studentId) {
+         const todayStart = new Date();
+         todayStart.setHours(0,0,0,0);
+         const todayEnd = new Date();
+         todayEnd.setHours(23,59,59,999);
+         
+         const { data: att } = await supabase
+            .from('attendance')
+            .select('id')
+            .eq('student_id', studentId)
+            .eq('class_id', classId)
+            .gte('time', todayStart.toISOString())
+            .lte('time', todayEnd.toISOString())
+            .maybeSingle();
+         
+         if (att) hasAttended = true;
+      }
+
       const classData = transformClassData(data);
+      classData.has_attended_today = hasAttended;
+      // Add student count from aggregation
+      classData.student_count = data.enrollments?.[0]?.count || 0;
 
       return NextResponse.json({
         success: true,
@@ -85,7 +113,6 @@ export async function GET(request: NextRequest) {
     if (studentId) {
 
       // Return classes for a specific student via enrollments
-      console.log('[API] GET /api/classes - studentId:', studentId);
       
       const { data: enrollments, error: enrollError } = await supabase
         .from('enrollments')
@@ -105,7 +132,6 @@ export async function GET(request: NextRequest) {
         `)
         .eq('student_id', studentId);
 
-      console.log('[API] Enrollments found:', enrollments?.length || 0);
       
       if (enrollError) {
         console.error('Enrollment fetch error:', enrollError);
@@ -115,9 +141,23 @@ export async function GET(request: NextRequest) {
         }, { status: 500 });
       }
 
+      // Fetch today's attendance for this student to mark "done" classes
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const { data: attendanceData } = await supabase
+        .from('attendance')
+        .select('class_id')
+        .eq('student_id', studentId)
+        .gte('time', todayStart.toISOString())
+        .lte('time', todayEnd.toISOString());
+      
+      const attendedClassIds = new Set(attendanceData?.map((a: any) => a.class_id) || []);
 
       // Transform to expected format
-      const classes = enrollments?.map((e: any) => transformClassData(e.classes)) || [];
+      const classes = enrollments?.map((e: any) => transformClassData(e.classes, attendedClassIds)) || [];
       
       return NextResponse.json({
         success: true,

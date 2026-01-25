@@ -118,7 +118,7 @@ export default function LecturerDashboard() {
 
     const formData = new FormData(e.currentTarget);
     const classData = {
-      class_code: (formData.get('class_code') as string).toUpperCase(),
+      class_code: classCodeInput, // Already uppercased by state
       class_name: formData.get('class_name') as string,
       schedule: formData.get('schedule') as string,
       lecturer_id: user?.id
@@ -294,7 +294,7 @@ export default function LecturerDashboard() {
               
               <form onSubmit={handleAddClass} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="class_code">Kode Kelas</Label>
+                  <Label htmlFor="class_code">Kode Kelas *</Label>
                   <Input
                     id="class_code"
                     name="class_code"
