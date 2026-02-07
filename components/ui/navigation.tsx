@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { 
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
   Menu,
   X,
   Home,
@@ -21,9 +21,9 @@ import {
   ChevronRight,
   Search,
   Bell,
-  User // Import the User icon here
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+  User, // Import the User icon here
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface User {
   id: string;
@@ -50,92 +50,55 @@ interface NavItem {
 
 const studentNavItems: NavItem[] = [
   {
-    label: 'Dashboard',
-    href: '/student/dashboard',
-    icon: Home
+    label: "Dashboard",
+    href: "/student/dashboard",
+    icon: Home,
   },
   {
-    label: 'Absensi',
-    href: '/student/attendance',
+    label: "Absensi",
+    href: "/student/attendance",
     icon: Camera,
     children: [
       {
-        label: 'Tandai Kehadiran',
-        href: '/student/attendance',
-        icon: Camera
+        label: "Tandai Kehadiran",
+        href: "/student/attendance",
+        icon: Camera,
       },
       {
-        label: 'Riwayat Absensi',
-        href: '/student/attendance/history',
-        icon: Calendar
-      }
-    ]
+        label: "Riwayat Absensi",
+        href: "/student/attendance/history",
+        icon: Calendar,
+      },
+    ],
   },
   {
-    label: 'Kelas Saya',
-    href: '/student/classes',
-    icon: BookOpen
+    label: "Kelas Saya",
+    href: "/student/classes",
+    icon: BookOpen,
   },
   {
-    label: 'Jadwal',
-    href: '/student/schedule',
-    icon: Calendar
+    label: "Registrasi Wajah",
+    href: "/student/face-registration",
+    icon: Users,
   },
-  {
-    label: 'Registrasi Wajah',
-    href: '/student/face-registration',
-    icon: Users
-  },
-  {
-    label: 'Profil',
-    href: '/student/profile',
-    icon: Settings
-  }
 ];
 
 const lecturerNavItems: NavItem[] = [
   {
-    label: 'Dashboard',
-    href: '/lecturer/dashboard',
-    icon: Home
+    label: "Dashboard",
+    href: "/lecturer/dashboard",
+    icon: Home,
   },
   {
-    label: 'Kelas',
-    href: '/lecturer/classes',
+    label: "Kelas",
+    href: "/lecturer/classes",
     icon: BookOpen,
-    children: [
-      {
-        label: 'Semua Kelas',
-        href: '/lecturer/classes',
-        icon: BookOpen
-      },
-      {
-        label: 'Tambah Kelas',
-        href: '/lecturer/classes/new',
-        icon: BookOpen
-      }
-    ]
   },
   {
-    label: 'Mahasiswa',
-    href: '/lecturer/students',
-    icon: Users
+    label: "Mahasiswa",
+    href: "/lecturer/students",
+    icon: Users,
   },
-  {
-    label: 'Jadwal',
-    href: '/lecturer/schedule',
-    icon: Calendar
-  },
-  {
-    label: 'Laporan',
-    href: '/lecturer/reports',
-    icon: BarChart3
-  },
-  {
-    label: 'Pengaturan',
-    href: '/lecturer/settings',
-    icon: Settings
-  }
 ];
 
 export function Navigation({ user, onLogout }: NavigationProps) {
@@ -143,13 +106,14 @@ export function Navigation({ user, onLogout }: NavigationProps) {
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const pathname = usePathname();
 
-  const navItems = user.userType === 'student' ? studentNavItems : lecturerNavItems;
+  const navItems =
+    user.userType === "student" ? studentNavItems : lecturerNavItems;
 
   const toggleExpanded = (href: string) => {
-    setExpandedItems(prev => 
-      prev.includes(href) 
-        ? prev.filter(item => item !== href)
-        : [...prev, href]
+    setExpandedItems((prev) =>
+      prev.includes(href)
+        ? prev.filter((item) => item !== href)
+        : [...prev, href],
     );
   };
 
@@ -160,7 +124,13 @@ export function Navigation({ user, onLogout }: NavigationProps) {
     return pathname.startsWith(href);
   };
 
-  const NavItemComponent = ({ item, level = 0 }: { item: NavItem; level?: number }) => {
+  const NavItemComponent = ({
+    item,
+    level = 0,
+  }: {
+    item: NavItem;
+    level?: number;
+  }) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems.includes(item.href);
     const active = isActive(item.href);
@@ -174,9 +144,9 @@ export function Navigation({ user, onLogout }: NavigationProps) {
               className={cn(
                 "w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors",
                 level > 0 && "ml-4",
-                active 
-                  ? "bg-blue-100 text-blue-700 border-r-2 border-blue-600" 
-                  : "text-gray-700 hover:bg-gray-100"
+                active
+                  ? "bg-blue-100 text-blue-700 border-r-2 border-blue-600"
+                  : "text-gray-700 hover:bg-gray-100",
               )}
             >
               <div className="flex items-center gap-3">
@@ -188,10 +158,10 @@ export function Navigation({ user, onLogout }: NavigationProps) {
                   </Badge>
                 )}
               </div>
-              <ChevronRight 
+              <ChevronRight
                 className={cn(
                   "w-4 h-4 transition-transform",
-                  isExpanded && "rotate-90"
+                  isExpanded && "rotate-90",
                 )}
               />
             </button>
@@ -201,9 +171,9 @@ export function Navigation({ user, onLogout }: NavigationProps) {
               className={cn(
                 "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
                 level > 0 && "ml-4",
-                active 
-                  ? "bg-blue-100 text-blue-700 border-r-2 border-blue-600" 
-                  : "text-gray-700 hover:bg-gray-100"
+                active
+                  ? "bg-blue-100 text-blue-700 border-r-2 border-blue-600"
+                  : "text-gray-700 hover:bg-gray-100",
               )}
               onClick={() => setIsMobileMenuOpen(false)}
             >
@@ -217,11 +187,15 @@ export function Navigation({ user, onLogout }: NavigationProps) {
             </Link>
           )}
         </div>
-        
+
         {hasChildren && isExpanded && (
           <div className="mt-1 space-y-1">
             {item.children!.map((child) => (
-              <NavItemComponent key={child.href} item={child} level={level + 1} />
+              <NavItemComponent
+                key={child.href}
+                item={child}
+                level={level + 1}
+              />
             ))}
           </div>
         )}
@@ -239,23 +213,29 @@ export function Navigation({ user, onLogout }: NavigationProps) {
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="bg-white shadow-md"
         >
-          {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          {isMobileMenuOpen ? (
+            <X className="w-4 h-4" />
+          ) : (
+            <Menu className="w-4 h-4" />
+          )}
         </Button>
       </div>
 
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0",
-        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0",
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="p-6 border-b border-gray-200">
@@ -264,9 +244,13 @@ export function Navigation({ user, onLogout }: NavigationProps) {
                 <GraduationCap className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">AttendanceTracker</h2>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  AttendanceTracker
+                </h2>
                 <p className="text-xs text-gray-600">
-                  {user.userType === 'student' ? 'Portal Mahasiswa' : 'Portal Dosen'}
+                  {user.userType === "student"
+                    ? "Portal Mahasiswa"
+                    : "Portal Dosen"}
                 </p>
               </div>
             </div>
@@ -277,15 +261,23 @@ export function Navigation({ user, onLogout }: NavigationProps) {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
                 {user.photo ? (
-                  <img src={user.photo} alt={user.name} className="w-10 h-10 rounded-full object-cover" />
+                  <img
+                    src={user.photo}
+                    alt={user.name}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
                 ) : (
                   <User className="w-5 h-5 text-gray-600" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {user.name}
+                </p>
                 <p className="text-xs text-gray-600 truncate">
-                  {user.userType === 'student' ? `NIM: ${user.identifier}` : `Kode: ${user.identifier}`}
+                  {user.userType === "student"
+                    ? `NIM: ${user.identifier}`
+                    : `Kode: ${user.identifier}`}
                 </p>
               </div>
               <Button variant="ghost" size="sm">
@@ -293,8 +285,6 @@ export function Navigation({ user, onLogout }: NavigationProps) {
               </Button>
             </div>
           </div>
-
-
 
           {/* Navigation Menu */}
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">

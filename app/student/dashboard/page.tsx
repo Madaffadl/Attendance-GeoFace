@@ -290,73 +290,11 @@ export default function StudentDashboard() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900">Kelas Saya</h2>
-          <div className="flex items-center gap-3">
-            <Dialog open={isJoinDialogOpen} onOpenChange={(open) => {
-              setIsJoinDialogOpen(open);
-              if (!open) {
-                setClassCode('');
-                setJoinError('');
-                setJoinSuccess('');
-              }
-            }}>
-              <DialogTrigger asChild>
-                <Button className="flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Gabung Kelas
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[400px]">
-                <DialogHeader>
-                  <DialogTitle>Gabung Kelas Baru</DialogTitle>
-                  <DialogDescription>
-                    Masukkan kode kelas yang diberikan oleh dosen untuk bergabung.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="py-4 space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="classCode">Kode Kelas</Label>
-                    <Input
-                      id="classCode"
-                      placeholder="Contoh: CS101"
-                      value={classCode}
-                      onChange={(e) => setClassCode(e.target.value.toUpperCase())}
-                      className="text-lg font-mono tracking-wider"
-                      disabled={isJoining}
-                    />
-                  </div>
-                  {joinError && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
-                      {joinError}
-                    </div>
-                  )}
-                  {joinSuccess && (
-                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-600">
-                      {joinSuccess}
-                    </div>
-                  )}
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsJoinDialogOpen(false)} disabled={isJoining}>
-                    Batal
-                  </Button>
-                  <Button onClick={handleJoinClass} disabled={isJoining || !classCode.trim()}>
-                    {isJoining ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Bergabung...
-                      </>
-                    ) : (
-                      'Gabung Kelas'
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            <Badge variant="secondary" className="px-3 py-1">
-              {classes.length} Kelas
-            </Badge>
-          </div>
+          <Badge variant="secondary" className="px-3 py-1">
+            {classes.length} Kelas
+          </Badge>
         </div>
+
 
         {isLoading ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -392,54 +330,6 @@ export default function StudentDashboard() {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Testing Section - Development Only */}
-      <div className="mt-8 pt-8 border-t border-dashed border-yellow-400">
-        <Card className="border-2 border-dashed border-yellow-400 bg-yellow-50">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-yellow-700">
-              <AlertTriangle className="h-5 w-5" />
-              Testing Tools (Development)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-yellow-700">
-              Tombol ini hanya untuk testing. Gunakan dengan hati-hati.
-            </p>
-            
-            {testingMessage && (
-              <div className={`p-3 rounded-lg text-sm font-medium ${
-                testingMessage.includes('✓') ? 'bg-green-100 text-green-700' : 
-                testingMessage.includes('✗') ? 'bg-red-100 text-red-700' : 
-                'bg-blue-100 text-blue-700'
-              }`}>
-                {testingMessage}
-              </div>
-            )}
-            
-            <div className="flex flex-wrap gap-3">
-              <Button 
-                variant="outline" 
-                onClick={deleteFaceData}
-                disabled={isDeleting}
-                className="border-red-300 text-red-600 hover:bg-red-50"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Hapus Data Wajah
-              </Button>
-              <Button 
-                variant="outline"
-                onClick={deleteAttendanceData}
-                disabled={isDeleting}
-                className="border-red-300 text-red-600 hover:bg-red-50"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Hapus Data Absensi
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </LayoutWrapper>
   );

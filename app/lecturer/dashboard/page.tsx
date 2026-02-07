@@ -280,72 +280,7 @@ export default function LecturerDashboard() {
       </div>
 
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">Kelas Saya</h2>
-          
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Tambah Kelas Baru</DialogTitle>
-                <DialogDescription>
-                  Buat kelas baru untuk mahasiswa bergabung.
-                </DialogDescription>
-              </DialogHeader>
-              
-              <form onSubmit={handleAddClass} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="class_code">Kode Kelas *</Label>
-                  <Input
-                    id="class_code"
-                    name="class_code"
-                    placeholder="CONTOH: CS301"
-                    className="uppercase"
-                    value={classCodeInput}
-                    onChange={(e) => setClassCodeInput(e.target.value.toUpperCase())}
-                    required
-                    disabled={isAddingClass}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="class_name">Nama Kelas</Label>
-                  <Input
-                    id="class_name"
-                    name="class_name"
-                    placeholder="contoh: Sistem Basis Data Lanjut"
-                    required
-                    disabled={isAddingClass}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="schedule">Jadwal</Label>
-                  <Input
-                    id="schedule"
-                    name="schedule"
-                    placeholder="contoh: Senin 10:00-12:00"
-                    required
-                    disabled={isAddingClass}
-                  />
-                </div>
-                
-                <div className="flex justify-end space-x-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
-                    disabled={isAddingClass}
-                  >
-                    Batal
-                  </Button>
-                  <Button type="submit" disabled={isAddingClass}>
-                    {isAddingClass ? <LoadingSpinner size="sm" /> : 'Buat Kelas'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <h2 className="text-2xl font-bold text-gray-900">Kelas Saya</h2>
 
         {isLoading ? (
           <div className="grid gap-6 lg:grid-cols-2">
@@ -366,11 +301,7 @@ export default function LecturerDashboard() {
             <CardContent className="text-center py-12">
               <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Kelas</h3>
-              <p className="text-gray-600 mb-4">Mulai dengan membuat kelas pertama Anda.</p>
-              <Button onClick={() => setIsDialogOpen(true)} className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Tambah Kelas
-              </Button>
+              <p className="text-gray-600">Tidak ada kelas yang tersedia.</p>
             </CardContent>
           </Card>
         ) : (
@@ -381,8 +312,6 @@ export default function LecturerDashboard() {
                 classItem={classItem}
                 variant="lecturer"
                 studentCount={classStudentCounts[classItem.id]}
-                showExportButton={true}
-                onExport={() => handleExportAttendance(classItem.id, classItem.class_name)}
               />
             ))}
           </div>

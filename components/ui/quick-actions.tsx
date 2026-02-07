@@ -62,18 +62,11 @@ export function QuickActions({ user, faceRegistrationStatus = false, classes = [
     disabled?: boolean;
   }> = [
     {
-      label: 'Tambah Kelas',
-      description: 'Buat kelas baru',
-      icon: Plus,
-      action: () => router.push(ROUTES.LECTURER.CLASSES_NEW),
+      label: 'Lihat Kelas',
+      description: 'Kelola semua kelas Anda',
+      icon: BookOpen,
+      action: () => router.push(ROUTES.LECTURER.CLASSES),
       color: 'bg-blue-500 hover:bg-blue-600'
-    },
-    {
-      label: 'Lihat Laporan',
-      description: 'Analisis kehadiran',
-      icon: BarChart3,
-      action: () => router.push(ROUTES.LECTURER.REPORTS),
-      color: 'bg-green-500 hover:bg-green-600'
     },
     {
       label: 'Kelola Mahasiswa',

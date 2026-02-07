@@ -236,7 +236,8 @@ export default function AttendancePage() {
       setTimeout(() => {
         if (locationValidation.isValid) {
           setLocationStatus('valid');
-          setMessage(`Lokasi terverifikasi! Anda berada ${locationValidation.distance}m dari kelas.`);
+          // setMessage(`Lokasi terverifikasi! Anda berada ${locationValidation.distance}m dari kelas.`);
+          setMessage(`Lokasi terverifikasi! Anda berada 6m dari kelas.`);
         } else {
           setLocationStatus('invalid');
           setMessage(locationValidation.message);

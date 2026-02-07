@@ -124,9 +124,9 @@ CREATE POLICY "Allow public delete classes" ON classes FOR DELETE USING (true);
 
 -- Insert demo students
 INSERT INTO students (nim, name, email, program_study, photo) VALUES
-  ('2021001', 'John Doe', 'john.doe@university.edu', 'Computer Science', 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150'),
-  ('2021002', 'Jane Smith', 'jane.smith@university.edu', 'Information Systems', 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150'),
-  ('2021003', 'Mike Johnson', 'mike.johnson@university.edu', 'Computer Science', 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150')
+  ('2021001', 'M.Daffa Fadillah', 'daffa@university.edu', 'Computer Science', NULL),
+  ('2021002', 'Jane Smith', 'jane.smith@university.edu', 'Information Systems', NULL),
+  ('2021003', 'Mike Johnson', 'mike.johnson@university.edu', 'Computer Science', NULL)
 ON CONFLICT (nim) DO NOTHING;
 
 -- Insert demo lecturers (password: password123 and password456 - in production use proper hashing!)
